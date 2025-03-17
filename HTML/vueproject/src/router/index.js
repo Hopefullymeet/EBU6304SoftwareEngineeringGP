@@ -22,6 +22,16 @@ const routes = [
     path: '/faq',
     name: 'faq',
     component: () => import('../views/sterotypes/FAQ.vue')
+  },
+  {
+    path: '/livesupport',
+    name: 'livesupport',
+    component: () => import('../views/sterotypes/LiveSupport.vue')
+  },
+  {
+    path: '/feedback',
+    name: 'feedback',
+    component: () => import('../views/sterotypes/Feedback.vue')
   }
 ]
 

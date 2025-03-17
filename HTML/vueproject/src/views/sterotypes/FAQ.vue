@@ -4,7 +4,7 @@
             <el-header class="help-header"><h1>Help Center</h1></el-header>
             <el-container>
                 <el-aside width="250px">
-                    <el-menu default-active="1" class="el-menu-vertical" mode="vertical">
+                    <el-menu default-active="3-1" class="el-menu-vertical" mode="vertical">
                         <el-menu-item index="1">
                             <i class="el-icon-wallet"></i>
                             <span>Account</span>
@@ -13,20 +13,24 @@
                             <i class="el-icon-tickets"></i>
                             <span>Billing & Subscriptions</span>
                         </el-menu-item>
-                        <el-submenu index="3">
+                        <el-menu-item index="3">
+                            <i class="el-icon-money"></i>
+                            <span>Budget</span>
+                        </el-menu-item>
+                        <el-submenu index="4">
                             <template slot="title">
                                 <i class="el-icon-question"></i>
                                 <span>Help Center</span>
                             </template>
-                            <el-menu-item index="3-1" v-on:click="activeIndex = '1'">
+                            <el-menu-item index="4-1">
                                 <i class="el-icon-document"></i>
                                 <span>FAQ</span>
                             </el-menu-item>
-                            <el-menu-item index="3-2">
+                            <el-menu-item index="4-2" v-on:click="goToLiveSupport">
                                 <i class="el-icon-service"></i>
                                 <span>Live Support</span>
                             </el-menu-item>
-                            <el-menu-item index="3-3">
+                            <el-menu-item index="4-3" v-on:click="goToFeedback">
                                 <i class="el-icon-chat-line-square"></i>
                                 <span>Feedback</span>
                             </el-menu-item>
@@ -159,6 +163,12 @@ export default {
         },
         handleFAQClick() {
             this.activeIndex = '1';
+        },
+        goToLiveSupport() {
+            this.$router.push('/livesupport');
+        },
+        goToFeedback() {
+            this.$router.push('/feedback');
         }
     }
 }
