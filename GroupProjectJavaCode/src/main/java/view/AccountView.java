@@ -463,16 +463,16 @@ public class AccountView extends JFrame {
         JLabel totalAssetsLabel = new JLabel("Total Assets");
         totalAssetsLabel.setFont(SUBHEADER_FONT);
         
-        JLabel totalAssetsValue = new JLabel("$12,458.92");
+        JLabel totalAssetsValue = new JLabel("¥12,458.92");
         totalAssetsValue.setFont(new Font("Arial", Font.BOLD, 24));
         totalAssetsValue.setForeground(POSITIVE_GREEN);
         
         JPanel detailsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
         detailsPanel.setBackground(LIGHT_GRAY);
         
-        addAssetDetail(detailsPanel, "Assets", "$15,250.75", POSITIVE_GREEN);
-        addAssetDetail(detailsPanel, "Debts", "-$2,791.83", NEGATIVE_RED);
-        addAssetDetail(detailsPanel, "Net Worth", "$12,458.92", POSITIVE_GREEN);
+        addAssetDetail(detailsPanel, "Assets", "¥15,250.75", POSITIVE_GREEN);
+        addAssetDetail(detailsPanel, "Debts", "-¥2,791.83", NEGATIVE_RED);
+        addAssetDetail(detailsPanel, "Net Worth", "¥12,458.92", POSITIVE_GREEN);
         
         assetSummaryPanel.add(totalAssetsLabel, BorderLayout.NORTH);
         assetSummaryPanel.add(totalAssetsValue, BorderLayout.WEST);
@@ -496,9 +496,11 @@ public class AccountView extends JFrame {
         bankAccountsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         bankAccountsLabel.setBorder(new EmptyBorder(10, 0, 5, 0));
         
-        // Add bank accounts
-        addAccountCard(accountsList, "Chase Checking", "Checking", "$2,453.65", "account-bank.png");
-        addAccountCard(accountsList, "Chase Savings", "Savings", "$8,257.12", "account-bank.png");
+        // Add Chinese bank accounts
+        addAccountCard(accountsList, "Bank of China", "Checking", "¥2,453.65", "account-bank.png");
+        addAccountCard(accountsList, "ICBC", "Savings", "¥8,257.12", "account-bank.png");
+        addAccountCard(accountsList, "China Construction Bank", "Checking", "¥1,785.30", "account-bank.png");
+        addAccountCard(accountsList, "Agricultural Bank of China", "Savings", "¥925.45", "account-bank.png");
         
         // Credit accounts
         JLabel creditAccountsLabel = new JLabel("Credit Cards");
@@ -506,9 +508,9 @@ public class AccountView extends JFrame {
         creditAccountsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         creditAccountsLabel.setBorder(new EmptyBorder(20, 0, 5, 0));
         
-        // Add credit accounts
-        addAccountCard(accountsList, "Visa Rewards", "Credit Card", "-$1,853.27", "account-credit.png");
-        addAccountCard(accountsList, "Amex Platinum", "Credit Card", "-$938.56", "account-credit.png");
+        // Add Chinese credit cards
+        addAccountCard(accountsList, "China Merchants Bank", "Credit Card", "-¥1,853.27", "account-credit.png");
+        addAccountCard(accountsList, "Bank of Communications", "Credit Card", "-¥938.56", "account-credit.png");
         
         // Digital wallet accounts
         JLabel digitalWalletLabel = new JLabel("Digital Wallets");
@@ -516,9 +518,9 @@ public class AccountView extends JFrame {
         digitalWalletLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         digitalWalletLabel.setBorder(new EmptyBorder(20, 0, 5, 0));
         
-        // Add digital wallet accounts
-        addAccountCard(accountsList, "PayPal", "Digital Wallet", "$345.98", "account-digital.png");
-        addAccountCard(accountsList, "Venmo", "Digital Wallet", "$154.23", "account-digital.png");
+        // Add Chinese digital wallets
+        addAccountCard(accountsList, "Alipay", "Digital Wallet", "¥345.98", "account-digital.png");
+        addAccountCard(accountsList, "WeChat Pay", "Digital Wallet", "¥154.23", "account-digital.png");
         
         // Investments
         JLabel investmentsLabel = new JLabel("Investments");
@@ -527,10 +529,10 @@ public class AccountView extends JFrame {
         investmentsLabel.setBorder(new EmptyBorder(20, 0, 5, 0));
         
         // Add investment accounts
-        addAccountCard(accountsList, "Vanguard 401(k)", "Retirement", "$3,452.87", "account-investment.png");
-        addAccountCard(accountsList, "Robinhood", "Brokerage", "$586.90", "account-investment.png");
+        addAccountCard(accountsList, "E-Fund", "Fund Investment", "¥3,452.87", "account-investment.png");
+        addAccountCard(accountsList, "China Securities", "Stock Account", "¥586.90", "account-investment.png");
         
-        // Button to add new account
+        // Add account button with dialog for bank selection
         JButton addAccountButton = new JButton("+ Add New Account");
         addAccountButton.setFont(CONTENT_FONT);
         addAccountButton.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -542,6 +544,14 @@ public class AccountView extends JFrame {
         addAccountButton.setMaximumSize(new Dimension(200, 40));
         addAccountButton.setBorder(new EmptyBorder(10, 15, 10, 15));
         addAccountButton.setMargin(new Insets(10, 15, 10, 15));
+        
+        // Add action listener for the add account button
+        addAccountButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showAddAccountDialog();
+            }
+        });
         
         // Add components to the accounts container
         accountsContainer.add(assetSummaryPanel);
@@ -560,6 +570,123 @@ public class AccountView extends JFrame {
         
         // Add to cards panel
         cardsPanel.add(accountsManagerContent, ACCOUNTS_MANAGER_PANEL);
+    }
+    
+    /**
+     * Shows a dialog for adding a new account with bank selection
+     */
+    private void showAddAccountDialog() {
+        JDialog addAccountDialog = new JDialog(this, "Add New Account", true);
+        addAccountDialog.setSize(400, 350);
+        addAccountDialog.setLocationRelativeTo(this);
+        addAccountDialog.setLayout(new BorderLayout());
+        
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new GridLayout(5, 2, 10, 20));
+        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        
+        // Bank selection
+        JLabel bankLabel = new JLabel("Bank:");
+        bankLabel.setFont(CONTENT_FONT);
+        
+        String[] bankOptions = {
+            "Select your bank",
+            "Bank of China", 
+            "ICBC", 
+            "China Construction Bank", 
+            "Agricultural Bank of China", 
+            "Bank of Communications", 
+            "China Merchants Bank", 
+            "Other"
+        };
+        
+        JComboBox<String> bankComboBox = new JComboBox<>(bankOptions);
+        bankComboBox.setSelectedIndex(0);
+        
+        // Account type
+        JLabel accountTypeLabel = new JLabel("Account Type:");
+        accountTypeLabel.setFont(CONTENT_FONT);
+        
+        String[] accountTypeOptions = {
+            "Select account type",
+            "Checking", 
+            "Savings", 
+            "Credit Card", 
+            "Digital Wallet", 
+            "Investment"
+        };
+        
+        JComboBox<String> accountTypeComboBox = new JComboBox<>(accountTypeOptions);
+        accountTypeComboBox.setSelectedIndex(0);
+        
+        // Account name
+        JLabel accountNameLabel = new JLabel("Account Name:");
+        accountNameLabel.setFont(CONTENT_FONT);
+        
+        JTextField accountNameField = new JTextField();
+        
+        // Initial balance
+        JLabel balanceLabel = new JLabel("Initial Balance:");
+        balanceLabel.setFont(CONTENT_FONT);
+        
+        JTextField balanceField = new JTextField();
+        
+        // Add fields to form
+        formPanel.add(bankLabel);
+        formPanel.add(bankComboBox);
+        formPanel.add(accountTypeLabel);
+        formPanel.add(accountTypeComboBox);
+        formPanel.add(accountNameLabel);
+        formPanel.add(accountNameField);
+        formPanel.add(balanceLabel);
+        formPanel.add(balanceField);
+        
+        // Buttons panel
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonsPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
+        
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.setFont(CONTENT_FONT);
+        cancelButton.addActionListener(e -> addAccountDialog.dispose());
+        
+        JButton addButton = new JButton("Add Account");
+        addButton.setFont(CONTENT_FONT);
+        addButton.setBackground(PRIMARY_BLUE);
+        addButton.setForeground(Color.WHITE);
+        addButton.setOpaque(true);
+        addButton.setBorderPainted(false);
+        addButton.setFocusPainted(false);
+        
+        addButton.addActionListener(e -> {
+            // Simple validation
+            if (bankComboBox.getSelectedIndex() == 0 || 
+                accountTypeComboBox.getSelectedIndex() == 0 ||
+                accountNameField.getText().trim().isEmpty() ||
+                balanceField.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(addAccountDialog, 
+                    "Please fill in all fields", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Here you would normally save the account to a database
+            // For now, just close the dialog
+            JOptionPane.showMessageDialog(addAccountDialog, 
+                "Account added successfully!", 
+                "Success", 
+                JOptionPane.INFORMATION_MESSAGE);
+            addAccountDialog.dispose();
+        });
+        
+        buttonsPanel.add(cancelButton);
+        buttonsPanel.add(addButton);
+        
+        // Add panels to dialog
+        addAccountDialog.add(formPanel, BorderLayout.CENTER);
+        addAccountDialog.add(buttonsPanel, BorderLayout.SOUTH);
+        
+        addAccountDialog.setVisible(true);
     }
     
     /**
