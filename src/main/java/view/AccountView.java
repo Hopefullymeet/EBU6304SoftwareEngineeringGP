@@ -132,7 +132,6 @@ public class AccountView extends JFrame {
         
         // Create sidebar items
         accountPanel = createSidebarItem("Account", false, true);
-        accountsManagerPanel = createSidebarItem("Accounts Manager", false, false); // New item for accounts manager
         billingPanel = createSidebarItem("Billing & Subscriptions", false, false);
         budgetPanel = createSidebarItem("Budget", false, false);
         helpCenterPanel = createSidebarItem("Help Center", false, false);
@@ -145,21 +144,13 @@ public class AccountView extends JFrame {
         
         // Create Account sub-items
         JPanel profilePanel = createSidebarItem("Profile", true, true);
-        JPanel securityPanel = createSidebarItem("Security", true, false);
+        JPanel accountsManagerPanel = createSidebarItem("Accounts Manager", true, false); // Moved to sub-item
         JPanel preferencesPanel = createSidebarItem("Preferences", true, false);
         
         // Add click listeners
         accountPanel.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent evt) {
                 toggleAccountSubItems();
-            }
-        });
-        
-        // Add click listener for Accounts Manager
-        accountsManagerPanel.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent evt) {
-                setActiveSidebarItem(accountsManagerPanel);
-                cardLayout.show(cardsPanel, ACCOUNTS_MANAGER_PANEL);
             }
         });
         
@@ -192,10 +183,11 @@ public class AccountView extends JFrame {
             }
         });
         
-        securityPanel.addMouseListener(new MouseAdapter() {
+        // Add click listener for Accounts Manager (now as sub-item)
+        accountsManagerPanel.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent evt) {
-                setActiveSidebarItem(securityPanel);
-                // Show security settings (could be a different card/panel)
+                setActiveSidebarItem(accountsManagerPanel);
+                cardLayout.show(cardsPanel, ACCOUNTS_MANAGER_PANEL);
             }
         });
         
@@ -209,15 +201,13 @@ public class AccountView extends JFrame {
         // Add sub-items to container
         accountSubItems.add(profilePanel);
         accountSubItems.add(Box.createVerticalStrut(5));
-        accountSubItems.add(securityPanel);
+        accountSubItems.add(accountsManagerPanel); // Add as sub-item here
         accountSubItems.add(Box.createVerticalStrut(5));
         accountSubItems.add(preferencesPanel);
         
         // Add sidebar items to panel
         sidebarPanel.add(accountPanel);
         sidebarPanel.add(accountSubItems);
-        sidebarPanel.add(Box.createVerticalStrut(5));
-        sidebarPanel.add(accountsManagerPanel); // Add the new accounts manager panel
         sidebarPanel.add(Box.createVerticalStrut(5));
         sidebarPanel.add(billingPanel);
         sidebarPanel.add(Box.createVerticalStrut(5));
