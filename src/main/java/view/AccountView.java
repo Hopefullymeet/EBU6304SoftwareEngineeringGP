@@ -23,6 +23,7 @@ public class AccountView extends JFrame {
     private JPanel budgetPanel;
     private JPanel helpCenterPanel;
     private JPanel accountsManagerPanel; // New panel for managing multiple accounts
+    private JPanel financialAdvisorPanel; // New panel for financial advisor
     
     // Account sub-items container
     private JPanel accountSubItems;
@@ -135,6 +136,7 @@ public class AccountView extends JFrame {
         billingPanel = createSidebarItem("Billing & Subscriptions", false, false);
         budgetPanel = createSidebarItem("Budget", false, false);
         helpCenterPanel = createSidebarItem("Help Center", false, false);
+        financialAdvisorPanel = createSidebarItem("Financial Advisor", false, false); // New financial advisor panel
         
         // Create Account sub-items container
         accountSubItems = new JPanel();
@@ -172,6 +174,14 @@ public class AccountView extends JFrame {
             public void mouseClicked(MouseEvent evt) {
                 dispose();
                 new HelpCenterView();
+            }
+        });
+        
+        // Add click listener for Financial Advisor
+        financialAdvisorPanel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent evt) {
+                dispose();
+                new FinancialAdvisorView();
             }
         });
         
@@ -214,6 +224,8 @@ public class AccountView extends JFrame {
         sidebarPanel.add(budgetPanel);
         sidebarPanel.add(Box.createVerticalStrut(5));
         sidebarPanel.add(helpCenterPanel);
+        sidebarPanel.add(Box.createVerticalStrut(5));
+        sidebarPanel.add(financialAdvisorPanel); // Add financial advisor to sidebar
         
         // Add a glue component to push everything to the top
         sidebarPanel.add(Box.createVerticalGlue());

@@ -30,6 +30,7 @@ public class HelpCenterView extends JFrame {
     private JPanel billingPanel;
     private JPanel budgetPanel;
     private JPanel helpCenterPanel;
+    private JPanel financialAdvisorPanel;
     private JPanel faqItemPanel;
     private JPanel liveSupportItemPanel;
     private JPanel feedbackItemPanel;
@@ -131,6 +132,7 @@ public class HelpCenterView extends JFrame {
         accountPanel = createSidebarItem("Account", false, null);
         billingPanel = createSidebarItem("Billing & Subscriptions", false, null);
         budgetPanel = createSidebarItem("Budget", false, null);
+        financialAdvisorPanel = createSidebarItem("Financial Advisor", false, null);
         
         // Help Center with expandable/collapsible sub-items
         helpCenterPanel = createSidebarItem("Help Center", false, new MouseAdapter() {
@@ -196,6 +198,15 @@ public class HelpCenterView extends JFrame {
             }
         });
         
+        // Add click listener for Financial Advisor
+        financialAdvisorPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                dispose();
+                new FinancialAdvisorView();
+            }
+        });
+        
         // Add sub-items to the container
         helpCenterSubItems.add(faqItemPanel);
         helpCenterSubItems.add(Box.createVerticalStrut(5));
@@ -209,6 +220,8 @@ public class HelpCenterView extends JFrame {
         sidebarPanel.add(billingPanel);
         sidebarPanel.add(Box.createVerticalStrut(5));
         sidebarPanel.add(budgetPanel);
+        sidebarPanel.add(Box.createVerticalStrut(5));
+        sidebarPanel.add(financialAdvisorPanel);
         sidebarPanel.add(Box.createVerticalStrut(5));
         sidebarPanel.add(helpCenterPanel);
         sidebarPanel.add(helpCenterSubItems);
