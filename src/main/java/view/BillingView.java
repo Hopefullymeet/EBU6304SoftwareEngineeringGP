@@ -25,6 +25,7 @@ public class BillingView extends JFrame {
     private JPanel billingPanel;
     private JPanel budgetPanel;
     private JPanel helpCenterPanel;
+    private JPanel financialAdvisorPanel;
     private JPanel manualEntryPanel;
     private JPanel importPanel;
     
@@ -128,6 +129,9 @@ public class BillingView extends JFrame {
         billingPanel = createSidebarItem("Billing & Subscriptions", false, true);
         budgetPanel = createSidebarItem("Budget", false, false);
         helpCenterPanel = createSidebarItem("Help Center", false, false);
+        financialAdvisorPanel = createSidebarItem("Financial Advisor", false, false);
+        manualEntryPanel = createSidebarItem("Manual Entry", true, false);
+        importPanel = createSidebarItem("Import Transactions", true, false);
         
         // Create Billing sub-items container
         billingSubItems = new JPanel();
@@ -165,6 +169,13 @@ public class BillingView extends JFrame {
             public void mouseClicked(MouseEvent evt) {
                 dispose();
                 new HelpCenterView();
+            }
+        });
+        
+        financialAdvisorPanel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent evt) {
+                dispose();
+                new FinancialAdvisorView();
             }
         });
         
@@ -206,6 +217,8 @@ public class BillingView extends JFrame {
         sidebarPanel.add(budgetPanel);
         sidebarPanel.add(Box.createVerticalStrut(5));
         sidebarPanel.add(helpCenterPanel);
+        sidebarPanel.add(Box.createVerticalStrut(5));
+        sidebarPanel.add(financialAdvisorPanel);
         
         // Add a glue component to push everything to the top
         sidebarPanel.add(Box.createVerticalGlue());

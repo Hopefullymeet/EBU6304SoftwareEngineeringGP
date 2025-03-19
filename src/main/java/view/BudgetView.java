@@ -23,6 +23,7 @@ public class BudgetView extends JFrame {
     private JPanel budgetPanel;
     private JPanel insightsPanel;
     private JPanel helpCenterPanel;
+    private JPanel financialAdvisorPanel;
     
     // Budget sub-items container
     private JPanel budgetSubItems;
@@ -114,6 +115,7 @@ public class BudgetView extends JFrame {
         billingPanel = createSidebarItem("Billing & Subscriptions", false, false);
         budgetPanel = createSidebarItem("Budget", false, true);
         helpCenterPanel = createSidebarItem("Help Center", false, false);
+        financialAdvisorPanel = createSidebarItem("Financial Advisor", false, false);
         
         // Create Budget sub-items container
         budgetSubItems = new JPanel();
@@ -151,6 +153,14 @@ public class BudgetView extends JFrame {
             public void mouseClicked(MouseEvent evt) {
                 dispose();
                 new HelpCenterView();
+            }
+        });
+        
+        // Add click listener for Financial Advisor
+        financialAdvisorPanel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent evt) {
+                dispose();
+                new FinancialAdvisorView();
             }
         });
         
@@ -192,6 +202,8 @@ public class BudgetView extends JFrame {
         sidebarPanel.add(budgetSubItems);
         sidebarPanel.add(Box.createVerticalStrut(5));
         sidebarPanel.add(helpCenterPanel);
+        sidebarPanel.add(Box.createVerticalStrut(5));
+        sidebarPanel.add(financialAdvisorPanel);
         
         // Add a glue component to push everything to the top
         sidebarPanel.add(Box.createVerticalGlue());
