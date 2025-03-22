@@ -9,6 +9,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import model.Transaction;
+import model.TransactionManager;
+import model.DeepSeekAPI;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import model.SessionManager;
+import model.UserManager;
 
 /**
  * BillingView - The billing and subscriptions screen with transaction management.
@@ -33,6 +41,9 @@ public class BillingView extends JFrame {
     private JPanel billingSubItems;
     private boolean billingExpanded = true;
     
+    // Transactions panel
+    private JPanel transactionsPanel;
+    
     // Static shared styling
     private static final Color PRIMARY_BLUE = new Color(52, 152, 219);
     private static final Color LIGHT_GRAY = new Color(245, 245, 245);
@@ -46,7 +57,7 @@ public class BillingView extends JFrame {
      * Constructor for the BillingView
      */
     public BillingView() {
-        setTitle("Billing & Data Entry");
+        setTitle("Billing & Subscriptions");
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -70,6 +81,11 @@ public class BillingView extends JFrame {
         add(contentPanel, BorderLayout.CENTER);
         setLocationRelativeTo(null);
         setVisible(true);
+        
+        // Start session monitoring
+        SessionManager.getInstance().startSession(this);
+        
+        refreshTransactionsDisplay();
     }
     
     /**
@@ -104,6 +120,12 @@ public class BillingView extends JFrame {
         
         // Add action listener to logout button
         logoutButton.addActionListener(e -> {
+            // Stop session monitoring
+            SessionManager.getInstance().stopSession();
+            
+            // Log out the user
+            UserManager.getInstance().logout();
+            
             dispose(); // Close current window
             new LoginView(); // Return to login screen
         });
@@ -356,7 +378,7 @@ public class BillingView extends JFrame {
         JLabel planNameLabel = new JLabel("Finance Tracker Pro");
         planNameLabel.setFont(new Font("Arial", Font.BOLD, 16));
         
-        JLabel planDetailsLabel = new JLabel("<html>Subscription active • Next billing date: January 1, 2024</html>");
+        JLabel planDetailsLabel = new JLabel("<html>Subscription active • Next billing date: 2024/01/01</html>");
         planDetailsLabel.setFont(CONTENT_FONT);
         
         planInfoPanel.add(planNameLabel, BorderLayout.NORTH);
@@ -369,16 +391,16 @@ public class BillingView extends JFrame {
         transactionsLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
         
         // Add some sample transactions using lighter weight components
-        JPanel transactionsPanel = new JPanel();
+        transactionsPanel = new JPanel();
         transactionsPanel.setLayout(new BoxLayout(transactionsPanel, BoxLayout.Y_AXIS));
         transactionsPanel.setBackground(Color.WHITE);
         transactionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        // Add a few sample transactions
-        addTransactionItem(transactionsPanel, "Jan 15, 2024", "Grocery Shopping", "Food", 85.43);
-        addTransactionItem(transactionsPanel, "Jan 12, 2024", "Monthly Rent", "Housing", 1200.00);
-        addTransactionItem(transactionsPanel, "Jan 10, 2024", "Gas Station", "Transportation", 45.75);
-        addTransactionItem(transactionsPanel, "Jan 5, 2024", "Online Streaming", "Entertainment", 14.99);
+        // Add a few sample transactions with YYYY/MM/DD format
+        addTransactionItem(transactionsPanel, "2024/01/15", "Grocery Shopping", "Food", 85.43);
+        addTransactionItem(transactionsPanel, "2024/01/12", "Monthly Rent", "Housing", 1200.00);
+        addTransactionItem(transactionsPanel, "2024/01/10", "Gas Station", "Transportation", 45.75);
+        addTransactionItem(transactionsPanel, "2024/01/05", "Online Streaming", "Entertainment", 14.99);
         
         // Data entry instructions
         JLabel dataEntryLabel = new JLabel("Transaction Data Entry");
@@ -391,6 +413,7 @@ public class BillingView extends JFrame {
         instructionsPanel.setBackground(LIGHT_GRAY);
         instructionsPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         instructionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        instructionsPanel.setMaximumSize(new Dimension(800, 150)); // 限制最大尺寸，减少空白区域
         
         JLabel instructionsText = new JLabel("<html>" +
                 "<p>You can add transaction data in two ways:</p>" +
@@ -398,8 +421,15 @@ public class BillingView extends JFrame {
                 "<p>2. <b>Import Transactions</b>: Import CSV files from your bank</p>" +
                 "</html>");
         instructionsText.setFont(CONTENT_FONT);
+        instructionsText.setAlignmentX(Component.LEFT_ALIGNMENT); // 确保文本左对齐
         
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        // 创建一个包装面板，确保按钮左对齐
+        JPanel buttonsWrapper = new JPanel();
+        buttonsWrapper.setLayout(new BoxLayout(buttonsWrapper, BoxLayout.X_AXIS));
+        buttonsWrapper.setBackground(LIGHT_GRAY);
+        buttonsWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)); // 设置FlowLayout的水平和垂直间距为0
         buttonsPanel.setBackground(LIGHT_GRAY);
         
         JButton manualButton = new JButton("Manual Entry");
@@ -415,9 +445,12 @@ public class BillingView extends JFrame {
         buttonsPanel.add(manualButton);
         buttonsPanel.add(importButton);
         
+        buttonsWrapper.add(buttonsPanel);
+        buttonsWrapper.add(Box.createHorizontalGlue()); // 添加水平胶水，确保按钮左对齐
+        
         instructionsPanel.add(instructionsText);
         instructionsPanel.add(Box.createVerticalStrut(10));
-        instructionsPanel.add(buttonsPanel);
+        instructionsPanel.add(buttonsWrapper);
         
         // Add everything to the main content panel
         mainContent.add(subscriptionLabel);
@@ -460,25 +493,26 @@ public class BillingView extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
         
-        // Date
+        // Date - Updated format for Chinese user preference (YYYY/MM/DD)
         JLabel dateLabel = new JLabel("Date:");
         JTextField dateField = new JTextField(10);
-        dateField.setText("MM/DD/YYYY");
+        dateField.setText("YYYY/MM/DD");
         
         // Description
         JLabel descLabel = new JLabel("Description:");
         JTextField descField = new JTextField(20);
         
-        // Amount
-        JLabel amountLabel = new JLabel("Amount:");
+        // Amount - Clarify meaning
+        JLabel amountLabel = new JLabel("Expense Amount ($):");
         JTextField amountField = new JTextField(10);
         
         // Category
         JLabel categoryLabel = new JLabel("Category:");
-        String[] categories = {"Housing", "Food", "Transportation", "Entertainment", "Shopping", "Utilities", "Chinese New Year", "Education", "Medical", "Travel", "Other"};
+        // Add AI categorization option
+        String[] categories = {"Select Category", "AI Categorize", "Housing", "Food", "Transportation", "Entertainment", "Shopping", "Utilities", "Chinese New Year", "Education", "Medical", "Travel", "Other"};
         JComboBox<String> categoryCombo = new JComboBox<>(categories);
         
-        // AI Suggestion section - Enhanced
+        // AI Suggestion section - Improved
         JPanel aiSuggestionPanel = new JPanel();
         aiSuggestionPanel.setLayout(new BorderLayout());
         aiSuggestionPanel.setBackground(new Color(240, 248, 255)); // Light blue background
@@ -487,25 +521,32 @@ public class BillingView extends JFrame {
             BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
         
-        JLabel aiIconLabel = new JLabel("🤖");
-        aiIconLabel.setFont(new Font("Arial", Font.PLAIN, 18));
-        
-        JPanel aiTextPanel = new JPanel(new BorderLayout());
-        aiTextPanel.setBackground(new Color(240, 248, 255));
-        
         JLabel aiTitleLabel = new JLabel("AI Assistant");
         aiTitleLabel.setFont(new Font("Arial", Font.BOLD, 14));
         
         JLabel aiSuggestion = new JLabel("Enter a transaction description for AI categorization");
         aiSuggestion.setForeground(Color.GRAY);
         
-        aiTextPanel.add(aiTitleLabel, BorderLayout.NORTH);
-        aiTextPanel.add(aiSuggestion, BorderLayout.CENTER);
+        // Create a panel for the AI title with better layout
+        JPanel aiTitlePanel = new JPanel();
+        aiTitlePanel.setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        aiTitlePanel.setBackground(new Color(240, 248, 255));
+        aiTitlePanel.add(aiTitleLabel);
         
-        // Add manual correction option
-        JCheckBox overrideCheckBox = new JCheckBox("Override AI suggestion");
-        overrideCheckBox.setBackground(new Color(240, 248, 255));
-        aiTextPanel.add(overrideCheckBox, BorderLayout.SOUTH);
+        // Create a panel for the AI suggestion text
+        JPanel aiSuggestionTextPanel = new JPanel();
+        aiSuggestionTextPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        aiSuggestionTextPanel.setBackground(new Color(240, 248, 255));
+        aiSuggestionTextPanel.add(aiSuggestion);
+        
+        JPanel aiContentPanel = new JPanel();
+        aiContentPanel.setLayout(new BoxLayout(aiContentPanel, BoxLayout.Y_AXIS));
+        aiContentPanel.setBackground(new Color(240, 248, 255));
+        aiContentPanel.add(aiTitlePanel);
+        aiContentPanel.add(Box.createVerticalStrut(5));
+        aiContentPanel.add(aiSuggestionTextPanel);
+        
+        aiSuggestionPanel.add(aiContentPanel, BorderLayout.CENTER);
         
         // Submit button
         JButton submitButton = new JButton("Add Transaction");
@@ -515,30 +556,46 @@ public class BillingView extends JFrame {
         submitButton.setBorderPainted(false);
         submitButton.setFocusPainted(false);
         
-        // Add action listener to generate AI suggestion when fields are filled
+        // Add action listener to generate AI suggestion when fields are filled or when "AI Categorize" is selected
         ActionListener suggestListener = e -> {
             if (!descField.getText().isEmpty()) {
                 String description = descField.getText().toLowerCase();
-                if (description.contains("grocery") || description.contains("food") || description.contains("restaurant")) {
-                    aiSuggestion.setText("I've identified this as a Food expense");
+                
+                // Check if "AI Categorize" is selected
+                if (categoryCombo.getSelectedItem().equals("AI Categorize")) {
+                    // Call to Deepseek API would go here - for now simulating with basic logic
+                    aiSuggestion.setText("Analyzing transaction with Deepseek AI...");
+                    
+                    // Simulate API call with improved categorization logic
+                    // In a real implementation, this would be replaced with an actual API call
+                    simulateDeepseekCategorization(description, categoryCombo, aiSuggestion, categories);
+                } else if (description.contains("grocery") || description.contains("food") || description.contains("restaurant")) {
+                    aiSuggestion.setText("AI suggested category: Food");
                     categoryCombo.setSelectedItem("Food");
                 } else if (description.contains("gas") || description.contains("uber") || description.contains("taxi")) {
-                    aiSuggestion.setText("I've identified this as a Transportation expense");
+                    aiSuggestion.setText("AI suggested category: Transportation");
                     categoryCombo.setSelectedItem("Transportation");
                 } else if (description.contains("rent") || description.contains("mortgage")) {
-                    aiSuggestion.setText("I've identified this as a Housing expense");
+                    aiSuggestion.setText("AI suggested category: Housing");
                     categoryCombo.setSelectedItem("Housing");
                 } else if (description.contains("movie") || description.contains("netflix") || description.contains("game")) {
-                    aiSuggestion.setText("I've identified this as an Entertainment expense");
+                    aiSuggestion.setText("AI suggested category: Entertainment");
                     categoryCombo.setSelectedItem("Entertainment");
                 } else if (description.contains("hongbao") || description.contains("gift") || description.contains("new year")) {
-                    aiSuggestion.setText("I've identified this as a Chinese New Year expense");
+                    aiSuggestion.setText("AI suggested category: Chinese New Year");
                     categoryCombo.setSelectedItem("Chinese New Year");
-                } else {
-                    aiSuggestion.setText("Please select a category or let me analyze more transactions");
+                } else if (categoryCombo.getSelectedItem().equals("Select Category")) {
+                    aiSuggestion.setText("Please select a category or use AI categorization");
                 }
             }
         };
+        
+        // Add listener to detect AI Categorize selection
+        categoryCombo.addActionListener(e -> {
+            if (categoryCombo.getSelectedItem().equals("AI Categorize") && !descField.getText().isEmpty()) {
+                suggestListener.actionPerformed(null);
+            }
+        });
         
         descField.addActionListener(suggestListener);
         descField.addFocusListener(new java.awt.event.FocusAdapter() {
@@ -581,11 +638,16 @@ public class BillingView extends JFrame {
         gbc.gridwidth = 2;
         formPanel.add(aiSuggestionPanel, gbc);
         
-        gbc.gridx = 1;
+        // Create a button panel to center the submit button
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.add(submitButton);
+        
+        gbc.gridx = 0;
         gbc.gridy = 5;
-        gbc.gridwidth = 1;
+        gbc.gridwidth = 2;
         gbc.insets = new Insets(20, 5, 5, 5);
-        formPanel.add(submitButton, gbc);
+        formPanel.add(buttonPanel, gbc);
         
         // Create a panel to hold instructions and the form
         JPanel contentPanel = new JPanel(new BorderLayout(0, 20));
@@ -595,13 +657,99 @@ public class BillingView extends JFrame {
         
         // Enhanced instructions
         JLabel instructionsLabel = new JLabel("<html><p>Enter your transaction details. Our AI will suggest a category based on the description.</p>" +
-                "<p>You can override the AI suggestion if needed by checking the override box.</p></html>");
+                "<p>Select \"AI Categorize\" from the dropdown for intelligent categorization.</p></html>");
         instructionsLabel.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
         contentPanel.add(instructionsLabel, BorderLayout.SOUTH);
         
         manualEntryPanel.add(contentPanel, BorderLayout.NORTH);
         
         this.contentPanel.add(manualEntryPanel, "manualEntry");
+        
+        submitButton.addActionListener(e -> {
+            try {
+                // Update date format to YYYY/MM/DD
+                LocalDate date = LocalDate.parse(dateField.getText(), DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+                String description = descField.getText();
+                String category = (String) categoryCombo.getSelectedItem();
+                
+                // Validate category selection
+                if (category.equals("Select Category") || category.equals("AI Categorize")) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Please select a specific category for the transaction.", 
+                        "Invalid Category", 
+                        JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                
+                double amount = Double.parseDouble(amountField.getText());
+                
+                Transaction transaction = new Transaction(date, description, category, amount);
+                TransactionManager.saveTransaction(transaction);
+                
+                // Clear fields
+                dateField.setText("YYYY/MM/DD");
+                descField.setText("");
+                amountField.setText("");
+                categoryCombo.setSelectedIndex(0);
+                
+                // Show success message
+                JOptionPane.showMessageDialog(this, 
+                    "Transaction saved successfully!", 
+                    "Success", 
+                    JOptionPane.INFORMATION_MESSAGE);
+                    
+                // Refresh the transactions display
+                refreshTransactionsDisplay();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, 
+                    "Error saving transaction: " + ex.getMessage(), 
+                    "Error", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        });
+    }
+    
+    /**
+     * Uses DeepseekAPI to categorize transactions
+     */
+    private void simulateDeepseekCategorization(String description, JComboBox<String> categoryCombo, JLabel aiSuggestion, String[] categories) {
+        // Create a list of valid categories (excluding "Select Category" and "AI Categorize")
+        String[] validCategories = new String[categories.length - 2];
+        System.arraycopy(categories, 2, validCategories, 0, categories.length - 2);
+        
+        // Update UI to show processing state
+        SwingUtilities.invokeLater(() -> {
+            aiSuggestion.setText("Processing with Deepseek AI...");
+        });
+        
+        // Call DeepseekAPI to categorize the transaction
+        DeepSeekAPI.categorizeTransaction(description, validCategories)
+            .thenAccept(result -> {
+                SwingUtilities.invokeLater(() -> {
+                    // Verify the result is one of our predefined categories
+                    boolean isValidCategory = false;
+                    for (String category : validCategories) {
+                        if (category.equals(result)) {
+                            isValidCategory = true;
+                            break;
+                        }
+                    }
+                    
+                    // If somehow we got an invalid category, default to "Other"
+                    String finalCategory = isValidCategory ? result : "Other";
+                    
+                    // Update the UI with the result
+                    aiSuggestion.setText("Deepseek AI categorized as: " + finalCategory);
+                    categoryCombo.setSelectedItem(finalCategory);
+                });
+            })
+            .exceptionally(throwable -> {
+                SwingUtilities.invokeLater(() -> {
+                    aiSuggestion.setText("Error during AI categorization. Please try again.");
+                    categoryCombo.setSelectedItem("Other");
+                });
+                return null;
+            });
     }
     
     /**
@@ -633,9 +781,39 @@ public class BillingView extends JFrame {
         JButton browseButton = new JButton("Browse");
         browseButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            int result = fileChooser.showOpenDialog(importPanel);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                filePathField.setText(fileChooser.getSelectedFile().getPath());
+            // 添加CSV文件过滤器，避免图标问题
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+                @Override
+                public boolean accept(java.io.File f) {
+                    if (f.isDirectory()) {
+                        return true;
+                    }
+                    String name = f.getName().toLowerCase();
+                    return name.endsWith(".csv");
+                }
+                
+                @Override
+                public String getDescription() {
+                    return "CSV Files (*.csv)";
+                }
+            });
+            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            fileChooser.setAcceptAllFileFilterUsed(false);
+            
+            try {
+                int result = fileChooser.showOpenDialog(importPanel);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    filePathField.setText(fileChooser.getSelectedFile().getPath());
+                }
+            } catch (Exception ex) {
+                // 出现错误时显示友好的错误消息
+                JOptionPane.showMessageDialog(
+                    importPanel, 
+                    "无法打开文件选择器: " + ex.getMessage(),
+                    "文件选择错误", 
+                    JOptionPane.ERROR_MESSAGE
+                );
+                ex.printStackTrace();
             }
         });
         
@@ -809,6 +987,77 @@ public class BillingView extends JFrame {
         importPanel.add(previewPanel, BorderLayout.CENTER);
         
         this.contentPanel.add(importPanel, "import");
+        
+        importButton.addActionListener(e -> {
+            String filePath = filePathField.getText();
+            if (!filePath.isEmpty()) {
+                try {
+                    // 显示处理中的对话框
+                    JDialog processingDialog = new JDialog(this, "导入中...", false);
+                    JLabel processingLabel = new JLabel("正在导入交易数据，请稍候...");
+                    processingLabel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+                    processingDialog.add(processingLabel);
+                    processingDialog.pack();
+                    processingDialog.setLocationRelativeTo(this);
+                    
+                    // 使用SwingWorker在后台线程中处理导入
+                    SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                        private String errorMessage = null;
+                        
+                        @Override
+                        protected Void doInBackground() {
+                            try {
+                                TransactionManager.importFromCSV(filePath);
+                            } catch (Exception ex) {
+                                errorMessage = ex.getMessage();
+                                ex.printStackTrace();
+                            }
+                            return null;
+                        }
+                        
+                        @Override
+                        protected void done() {
+                            processingDialog.dispose();
+                            
+                            if (errorMessage == null) {
+                                JOptionPane.showMessageDialog(
+                                    BillingView.this, 
+                                    "交易数据导入成功！", 
+                                    "导入成功", 
+                                    JOptionPane.INFORMATION_MESSAGE
+                                );
+                                refreshTransactionsDisplay();
+                            } else {
+                                JOptionPane.showMessageDialog(
+                                    BillingView.this, 
+                                    "导入交易时出错: " + errorMessage, 
+                                    "导入错误", 
+                                    JOptionPane.ERROR_MESSAGE
+                                );
+                            }
+                        }
+                    };
+                    
+                    worker.execute();
+                    processingDialog.setVisible(true);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(
+                        this, 
+                        "导入交易时出错: " + ex.getMessage(), 
+                        "导入错误", 
+                        JOptionPane.ERROR_MESSAGE
+                    );
+                    ex.printStackTrace();
+                }
+            } else {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "请先选择CSV文件",
+                    "文件未选择",
+                    JOptionPane.WARNING_MESSAGE
+                );
+            }
+        });
     }
     
     /**
@@ -859,5 +1108,29 @@ public class BillingView extends JFrame {
         }
         
         SwingUtilities.invokeLater(() -> new BillingView());
+    }
+    
+    /**
+     * Refreshes the transactions display
+     */
+    private void refreshTransactionsDisplay() {
+        List<Transaction> transactions = TransactionManager.loadTransactions();
+        transactionsPanel.removeAll();
+        
+        // Sort transactions by date (most recent first)
+        transactions.sort((a, b) -> b.getDate().compareTo(a.getDate()));
+        
+        // Display the 10 most recent transactions
+        for (int i = 0; i < Math.min(10, transactions.size()); i++) {
+            Transaction t = transactions.get(i);
+            addTransactionItem(transactionsPanel, 
+                t.getDate().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")),
+                t.getDescription(),
+                t.getCategory(),
+                t.getAmount());
+        }
+        
+        transactionsPanel.revalidate();
+        transactionsPanel.repaint();
     }
 } 
