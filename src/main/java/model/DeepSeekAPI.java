@@ -31,7 +31,7 @@ public class DeepSeekAPI {
     
     // API Configuration
     private static final String BASE_URL = "https://api.deepseek.com/chat/completions";
-    private static final String DEFAULT_API_KEY = "sk-1d8d9e38ef114e0a8482255e57d54d68";
+    private static final String DEFAULT_API_KEY = "sk-xxx";
     private String apiKey;
     private String model;
     
