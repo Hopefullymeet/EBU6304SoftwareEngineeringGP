@@ -1,6 +1,10 @@
 package view;
 
 import model.DeepSeekAPI;
+import model.SessionManager;
+import model.UserManager;
+import model.User;
+import model.CurrencyManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -45,6 +49,11 @@ public class FinancialAdvisorView extends JFrame {
     private final Font CONTENT_FONT = new Font("Arial", Font.PLAIN, 14);
     private final Font SIDEBAR_FONT = new Font("Arial", Font.PLAIN, 14);
     
+    // Managers
+    private CurrencyManager currencyManager;
+    
+    private User currentUser;
+    
     /**
      * Constructor for the FinancialAdvisorView
      */
@@ -53,6 +62,9 @@ public class FinancialAdvisorView extends JFrame {
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+        
+        // Initialize managers
+        currencyManager = CurrencyManager.getInstance();
         
         createHeader();
         createSidebar();
@@ -64,10 +76,13 @@ public class FinancialAdvisorView extends JFrame {
         
         // Set initial focus to the API key field
         apiKeyField.requestFocusInWindow();
+        
+        // Start session monitoring
+        SessionManager.getInstance().startSession(this);
     }
     
     /**
-     * Creates the header panel with title
+     * Creates the header panel with title and logout button
      */
     private void createHeader() {
         headerPanel = new JPanel();
@@ -75,20 +90,14 @@ public class FinancialAdvisorView extends JFrame {
         headerPanel.setPreferredSize(new Dimension(getWidth(), 50));
         headerPanel.setLayout(new BorderLayout());
         
-        JLabel titleLabel = new JLabel("Financial Advisor AI");
-        titleLabel.setFont(HEADER_FONT);
-        titleLabel.setForeground(Color.WHITE);
-        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        titleLabel.setBorder(new EmptyBorder(10, 0, 10, 0));
-        
         // Create back button in the top-left corner
-        JButton backButton = new JButton("Back");
-        backButton.setBackground(new Color(41, 128, 185)); // Darker blue
+        JButton backButton = new JButton("← Back");
+        backButton.setBackground(PRIMARY_BLUE);
         backButton.setForeground(Color.WHITE);
         backButton.setFont(new Font("Arial", Font.BOLD, 12));
         backButton.setFocusPainted(false);
-        backButton.setOpaque(true);
         backButton.setBorderPainted(false);
+        backButton.setOpaque(true);
         
         // Create a panel to hold the back button with some margin
         JPanel backPanel = new JPanel();
@@ -101,12 +110,49 @@ public class FinancialAdvisorView extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 dispose(); // Close current window
-                new AccountView(); // Return to account screen
+                new AccountView(); // Return to account view
             }
         });
         
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        JLabel titleLabel = new JLabel("Financial Advisor");
+        titleLabel.setFont(HEADER_FONT);
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        titleLabel.setBorder(new EmptyBorder(10, 0, 10, 0));
+        
+        // Create logout button in the top-right corner
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.setBackground(new Color(231, 76, 60)); // Red color
+        logoutButton.setForeground(Color.WHITE);
+        logoutButton.setFont(new Font("Arial", Font.BOLD, 12));
+        logoutButton.setFocusPainted(false);
+        logoutButton.setOpaque(true);
+        logoutButton.setBorderPainted(false);
+        
+        // Create a panel to hold the logout button with some margin
+        JPanel logoutPanel = new JPanel();
+        logoutPanel.setBackground(PRIMARY_BLUE);
+        logoutPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        logoutPanel.add(logoutButton);
+        
+        // Add action listener to logout button
+        logoutButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Stop session monitoring
+                SessionManager.getInstance().stopSession();
+                
+                // Log out the user
+                UserManager.getInstance().logout();
+                
+                dispose(); // Close current window
+                new LoginView(); // Return to login screen
+            }
+        });
+        
         headerPanel.add(backPanel, BorderLayout.WEST);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        headerPanel.add(logoutPanel, BorderLayout.EAST);
         
         add(headerPanel, BorderLayout.NORTH);
     }
@@ -131,7 +177,22 @@ public class FinancialAdvisorView extends JFrame {
         apiKeyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         apiKeyLabel.setBorder(new EmptyBorder(15, 0, 5, 0));
         
-        apiKeyField = new JTextField();
+        // Create API key field with placeholder text
+        apiKeyField = new JTextField() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                
+                // Add placeholder text if the field is empty and doesn't have focus
+                if (getText().isEmpty() && !hasFocus()) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setColor(Color.GRAY);
+                    g2.setFont(getFont().deriveFont(Font.ITALIC));
+                    g2.drawString("default", getInsets().left, g.getFontMetrics().getMaxAscent() + getInsets().top);
+                    g2.dispose();
+                }
+            }
+        };
         apiKeyField.setFont(CONTENT_FONT);
         apiKeyField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         apiKeyField.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -187,21 +248,22 @@ public class FinancialAdvisorView extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 if (!isConnected) {
                     String apiKey = apiKeyField.getText().trim();
-                    if (apiKey.isEmpty()) {
-                        JOptionPane.showMessageDialog(FinancialAdvisorView.this, 
-                            "Please enter your DeepSeek API Key", 
-                            "API Key Required", 
-                            JOptionPane.WARNING_MESSAGE);
-                        return;
-                    }
                     
                     try {
                         // Determine which model is selected
                         String selectedModel = chatModelButton.isSelected() ? 
                             DeepSeekAPI.MODEL_CHAT : DeepSeekAPI.MODEL_REASONER;
                         
-                        // Attempt to initialize the API client with selected model
-                        deepSeekAPI = new DeepSeekAPI(apiKey, selectedModel);
+                        // Initialize API client - use default key if no key provided
+                        if (apiKey.isEmpty()) {
+                            // Use default API Key
+                            deepSeekAPI = new DeepSeekAPI();
+                            deepSeekAPI.setModel(selectedModel);
+                        } else {
+                            // Use provided API Key
+                            deepSeekAPI = new DeepSeekAPI(apiKey, selectedModel);
+                        }
+                        
                         isConnected = true;
                         statusLabel.setText("Status: Connected to " + 
                             (selectedModel.equals(DeepSeekAPI.MODEL_CHAT) ? "DeepSeek-Chat" : "DeepSeek-Reasoner"));
@@ -697,6 +759,55 @@ public class FinancialAdvisorView extends JFrame {
     private String getCurrentTimestamp() {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
         return sdf.format(new Date());
+    }
+    
+    /**
+     * Creates the investment recommendations content
+     */
+    private void createInvestmentRecommendations() {
+        // Get user's currency preference
+        User currentUser = UserManager.getInstance().getCurrentUser();
+        String userCurrency = currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY;
+        
+        // Convert and format any monetary values in this panel
+        // Example for an investment amount:
+        double investmentAmountCNY = 10000.00; // Base amount in CNY
+        double convertedAmount = currencyManager.convert(investmentAmountCNY, CurrencyManager.CNY, userCurrency);
+        String formattedAmount = currencyManager.format(convertedAmount, userCurrency);
+        
+        // Update labels to use the formatted values
+        JLabel investmentLabel = new JLabel("Recommended Investment: " + formattedAmount);
+    }
+    
+    /**
+     * Adds an investment opportunity card
+     */
+    private void addInvestmentCard(JPanel panel, String name, String type, double minInvestment, double expectedReturn) {
+        // Get user's currency preference
+        User currentUser = UserManager.getInstance().getCurrentUser();
+        String userCurrency = currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY;
+        
+        // Convert minimum investment to user's preferred currency
+        double convertedMinInvestment = currencyManager.convert(minInvestment, CurrencyManager.CNY, userCurrency);
+        
+        // Format the amount according to user's currency
+        String formattedMinInvestment = currencyManager.format(convertedMinInvestment, userCurrency);
+        
+        // ... existing card creation code ...
+        
+        // Update labels to use the formatted values
+        JLabel investmentLabel = new JLabel("Min. Investment: " + formattedMinInvestment);
+        
+        // ... rest of the method ...
+    }
+    
+    /**
+     * Refreshes all monetary displays to reflect the current user's currency preference
+     */
+    private void refreshCurrencyDisplay() {
+        // Refresh all panels that display monetary values
+        createInvestmentRecommendations();
+        // ... other panels that need refreshing
     }
     
     /**
