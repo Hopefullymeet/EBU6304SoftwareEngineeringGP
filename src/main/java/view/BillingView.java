@@ -12,11 +12,13 @@ import java.awt.event.MouseEvent;
 import model.Transaction;
 import model.TransactionManager;
 import model.DeepSeekAPI;
+import model.CurrencyManager;
+import model.User;
+import model.UserManager;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import model.SessionManager;
-import model.UserManager;
 
 /**
  * BillingView - The billing and subscriptions screen with transaction management.
@@ -44,6 +46,9 @@ public class BillingView extends JFrame {
     // Transactions panel
     private JPanel transactionsPanel;
     
+    // Managers for currency and theme
+    private CurrencyManager currencyManager;
+    
     // Static shared styling
     private static final Color PRIMARY_BLUE = new Color(52, 152, 219);
     private static final Color LIGHT_GRAY = new Color(245, 245, 245);
@@ -53,6 +58,9 @@ public class BillingView extends JFrame {
     private static final Font CONTENT_FONT = new Font("Arial", Font.PLAIN, 14);
     private static final Font SIDEBAR_FONT = new Font("Arial", Font.PLAIN, 14);
     
+    private User currentUser;
+    private JTable billingTable;
+    
     /**
      * Constructor for the BillingView
      */
@@ -61,6 +69,15 @@ public class BillingView extends JFrame {
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+        
+        // Initialize managers
+        currencyManager = CurrencyManager.getInstance();
+        
+        // Apply current user's theme
+        currentUser = UserManager.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            // themeManager.applyUserThemePreference(currentUser);
+        }
         
         createHeader();
         createSidebar();
@@ -397,10 +414,10 @@ public class BillingView extends JFrame {
         transactionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         // Add a few sample transactions with YYYY/MM/DD format
-        addTransactionItem(transactionsPanel, "2024/01/15", "Grocery Shopping", "Food", 85.43);
-        addTransactionItem(transactionsPanel, "2024/01/12", "Monthly Rent", "Housing", 1200.00);
-        addTransactionItem(transactionsPanel, "2024/01/10", "Gas Station", "Transportation", 45.75);
-        addTransactionItem(transactionsPanel, "2024/01/05", "Online Streaming", "Entertainment", 14.99);
+        addTransactionItem(transactionsPanel, "2024-01-15", "Grocery Shopping", "Food", 85.43);
+        addTransactionItem(transactionsPanel, "2024-01-12", "Monthly Rent", "Housing", 1200.00);
+        addTransactionItem(transactionsPanel, "2024-01-10", "Gas Station", "Transportation", 45.75);
+        addTransactionItem(transactionsPanel, "2024-01-05", "Online Streaming", "Entertainment", 14.99);
         
         // Data entry instructions
         JLabel dataEntryLabel = new JLabel("Transaction Data Entry");
@@ -496,7 +513,7 @@ public class BillingView extends JFrame {
         // Date - Updated format for Chinese user preference (YYYY/MM/DD)
         JLabel dateLabel = new JLabel("Date:");
         JTextField dateField = new JTextField(10);
-        dateField.setText("YYYY/MM/DD");
+        dateField.setText("yyyy-MM-dd");
         
         // Description
         JLabel descLabel = new JLabel("Description:");
@@ -668,7 +685,7 @@ public class BillingView extends JFrame {
         submitButton.addActionListener(e -> {
             try {
                 // Update date format to YYYY/MM/DD
-                LocalDate date = LocalDate.parse(dateField.getText(), DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+                LocalDate date = LocalDate.parse(dateField.getText(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
                 String description = descField.getText();
                 String category = (String) categoryCombo.getSelectedItem();
                 
@@ -687,7 +704,7 @@ public class BillingView extends JFrame {
                 TransactionManager.saveTransaction(transaction);
                 
                 // Clear fields
-                dateField.setText("YYYY/MM/DD");
+                dateField.setText("yyyy-MM-dd");
                 descField.setText("");
                 amountField.setText("");
                 categoryCombo.setSelectedIndex(0);
@@ -1061,40 +1078,98 @@ public class BillingView extends JFrame {
     }
     
     /**
-     * Helper method to add a transaction item to a panel
+     * Adds a transaction item to the list display
+     * @param panel The panel to add the transaction to
+     * @param date The date of the transaction
+     * @param description The description of the transaction
+     * @param category The category of the transaction
+     * @param amount The amount of the transaction
      */
     private void addTransactionItem(JPanel panel, String date, String description, String category, double amount) {
-        JPanel transactionItem = new JPanel(new BorderLayout());
-        transactionItem.setBackground(Color.WHITE);
-        transactionItem.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, LIGHT_GRAY));
+        // Get current user's currency preference
+        User currentUser = UserManager.getInstance().getCurrentUser();
+        String userCurrency = currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY;
         
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        leftPanel.setBackground(Color.WHITE);
+        JPanel itemPanel = new JPanel(new BorderLayout());
+        itemPanel.setBackground(Color.WHITE);
+        itemPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 230, 230)),
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)));
+        itemPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        
+        JPanel detailsPanel = new JPanel();
+        detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
+        detailsPanel.setBackground(Color.WHITE);
         
         JLabel dateLabel = new JLabel(date);
-        dateLabel.setFont(CONTENT_FONT);
-        dateLabel.setPreferredSize(new Dimension(100, 20));
+        dateLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        dateLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel descLabel = new JLabel(description);
-        descLabel.setFont(CONTENT_FONT);
-        descLabel.setPreferredSize(new Dimension(150, 20));
+        JLabel descriptionLabel = new JLabel(description);
+        descriptionLabel.setFont(CONTENT_FONT);
+        descriptionLabel.setForeground(DARK_GRAY);
+        descriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel categoryLabel = new JLabel(category);
-        categoryLabel.setFont(CONTENT_FONT);
-        categoryLabel.setPreferredSize(new Dimension(100, 20));
+        categoryLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        categoryLabel.setForeground(new Color(150, 150, 150));
+        categoryLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        leftPanel.add(dateLabel);
-        leftPanel.add(descLabel);
-        leftPanel.add(categoryLabel);
+        detailsPanel.add(dateLabel);
+        detailsPanel.add(Box.createVerticalStrut(3));
+        detailsPanel.add(descriptionLabel);
+        detailsPanel.add(Box.createVerticalStrut(3));
+        detailsPanel.add(categoryLabel);
         
-        JLabel amountLabel = new JLabel(String.format("$%.2f", amount));
-        amountLabel.setFont(CONTENT_FONT);
-        amountLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        // Convert amount to user's preferred currency
+        double convertedAmount = currencyManager.convert(amount, CurrencyManager.CNY, userCurrency);
         
-        transactionItem.add(leftPanel, BorderLayout.WEST);
-        transactionItem.add(amountLabel, BorderLayout.EAST);
+        // Format amount according to user's currency
+        String formattedAmount = currencyManager.format(convertedAmount, userCurrency);
         
-        panel.add(transactionItem);
+        JLabel amountLabel = new JLabel(formattedAmount);
+        amountLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        amountLabel.setForeground(amount < 0 ? new Color(231, 76, 60) : new Color(46, 204, 113));
+        
+        itemPanel.add(detailsPanel, BorderLayout.WEST);
+        itemPanel.add(amountLabel, BorderLayout.EAST);
+        
+        panel.add(itemPanel);
+        panel.add(Box.createVerticalStrut(5));
+    }
+    
+    /**
+     * Refreshes the transactions display to show current data
+     */
+    private void refreshTransactionsDisplay() {
+        if (transactionsPanel != null) {
+            transactionsPanel.removeAll();
+            
+            // Get transactions
+            List<Transaction> transactions = TransactionManager.loadTransactions();
+            
+            if (transactions.isEmpty()) {
+                JLabel noTransactionsLabel = new JLabel("No transactions found");
+                noTransactionsLabel.setFont(CONTENT_FONT);
+                noTransactionsLabel.setForeground(DARK_GRAY);
+                noTransactionsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                transactionsPanel.add(noTransactionsLabel);
+            } else {
+                // Add each transaction to the list
+                for (Transaction transaction : transactions) {
+                    addTransactionItem(
+                        transactionsPanel,
+                        transaction.getDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                        transaction.getDescription(),
+                        transaction.getCategory(),
+                        transaction.getAmount()
+                    );
+                }
+            }
+            
+            transactionsPanel.revalidate();
+            transactionsPanel.repaint();
+        }
     }
     
     /**
@@ -1108,29 +1183,5 @@ public class BillingView extends JFrame {
         }
         
         SwingUtilities.invokeLater(() -> new BillingView());
-    }
-    
-    /**
-     * Refreshes the transactions display
-     */
-    private void refreshTransactionsDisplay() {
-        List<Transaction> transactions = TransactionManager.loadTransactions();
-        transactionsPanel.removeAll();
-        
-        // Sort transactions by date (most recent first)
-        transactions.sort((a, b) -> b.getDate().compareTo(a.getDate()));
-        
-        // Display the 10 most recent transactions
-        for (int i = 0; i < Math.min(10, transactions.size()); i++) {
-            Transaction t = transactions.get(i);
-            addTransactionItem(transactionsPanel, 
-                t.getDate().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")),
-                t.getDescription(),
-                t.getCategory(),
-                t.getAmount());
-        }
-        
-        transactionsPanel.revalidate();
-        transactionsPanel.repaint();
     }
 } 
