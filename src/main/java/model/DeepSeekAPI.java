@@ -31,7 +31,7 @@ public class DeepSeekAPI {
     
     // API Configuration
     private static final String BASE_URL = "https://api.deepseek.com/chat/completions";
-    private static final String DEFAULT_API_KEY = "sk-xxx";
+    private static final String DEFAULT_API_KEY = "sk-1d8d9e38ef114e0a8482255e57d54d68";
     private String apiKey;
     private String model;
     
@@ -408,7 +408,7 @@ public class DeepSeekAPI {
             try {
                 System.out.println("Starting transaction categorization for: " + description);
                 
-                // Check if the description directly matches a category name first (case insensitive)
+                // Step 1: Check for direct category matches (case insensitive)
                 for (String category : availableCategories) {
                     if (description.equalsIgnoreCase(category)) {
                         System.out.println("Direct category match found: " + category);
@@ -416,7 +416,22 @@ public class DeepSeekAPI {
                     }
                 }
                 
-                // Build the category options string
+                // Step 2: Try local pattern matching for common transaction types
+                // This is faster than API calls and handles most common cases
+                String localCategory = matchLocalPatterns(description.toLowerCase(), availableCategories);
+                if (localCategory != null) {
+                    System.out.println("Local pattern match found: " + localCategory);
+                    return localCategory;
+                }
+                
+                // Step 3: Check for context clues (amounts, locations, frequency words)
+                String contextCategory = analyzeTransactionContext(description.toLowerCase(), availableCategories);
+                if (contextCategory != null) {
+                    System.out.println("Context analysis suggests: " + contextCategory);
+                    return contextCategory;
+                }
+                
+                // Step 4: Build the category options string for the AI prompt
                 StringBuilder categoryOptions = new StringBuilder();
                 for (int i = 0; i < availableCategories.length; i++) {
                     categoryOptions.append(availableCategories[i]);
@@ -427,19 +442,27 @@ public class DeepSeekAPI {
                 
                 System.out.println("Available categories: " + categoryOptions.toString());
                 
-                // Create the prompt for the API
-                String prompt = "You are a financial transaction categorizer. "
+                // Step 5: Create a more comprehensive prompt with examples for the API
+                String prompt = "You are a financial transaction categorizer specialized in detecting complex spending patterns. "
                     + "Categorize the following transaction: '" + description + "' "
-                    + "You MUST choose EXACTLY ONE category from this list: " + categoryOptions + ". "
+                    + "Choose EXACTLY ONE category from this list: " + categoryOptions + ". "
+                    + "Consider these examples to guide your decision:\n"
+                    + "- 'Monthly rent payment' → Housing\n"
+                    + "- 'Grocery shopping at local market' → Food\n"
+                    + "- 'Uber ride to airport' → Transportation\n"
+                    + "- 'Netflix subscription' → Entertainment\n"
+                    + "- 'Red envelope for Chinese New Year' → Chinese New Year\n"
+                    + "- 'Utility bill payment' → Utilities\n"
                     + "Respond with ONLY the category name, no explanation or additional text. "
-                    + "If unsure, choose the most likely category based on the description.";
+                    + "If unsure, choose the most likely category based on similar real-world transactions.";
                 
-                System.out.println("Sending request to DeepSeek API...");
+                System.out.println("Sending enhanced request to DeepSeek API...");
                 
                 // Make the actual API call
                 String result = makeAPICall(prompt);
                 System.out.println("Received result from API: " + result);
                 
+                // Validate and clean up the API response
                 String validatedCategory = validateCategory(result, availableCategories);
                 System.out.println("Validated category: " + validatedCategory);
                 
@@ -447,190 +470,231 @@ public class DeepSeekAPI {
             } catch (Exception e) {
                 System.err.println("Error during transaction categorization: " + e.getMessage());
                 e.printStackTrace();
-                return "Other"; // Default fallback category
+                // Use more intelligent fallback if possible
+                return findBestFallbackCategory(description, availableCategories);
             }
         });
     }
     
     /**
-     * Makes the actual API call to Deepseek
+     * Analyzes transaction context for better categorization
      * 
-     * @param prompt The prompt to send to the API
-     * @return The API response
+     * @param description The transaction description (lowercase)
+     * @param availableCategories Available categories
+     * @return Suggested category based on context or null if uncertain
      */
-    private static String makeAPICall(String prompt) {
-        try {
-            System.out.println("Preparing DeepSeek API request with key: " + DEFAULT_API_KEY.substring(0, 5) + "...");
-            
-            URL url = new URL(BASE_URL);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Authorization", "Bearer " + DEFAULT_API_KEY);
-            connection.setConnectTimeout(10000); // 10 seconds timeout for connection
-            connection.setReadTimeout(30000);    // 30 seconds timeout for reading
-            connection.setDoOutput(true);
-            
-            // Create request body
-            JSONObject requestBody = new JSONObject();
-            requestBody.put("model", MODEL_CHAT);
-            
-            // Create messages array with system and user messages
-            JSONArray messagesArray = new JSONArray();
-            
-            // Add system message defining the task
-            JSONObject systemMessage = new JSONObject();
-            systemMessage.put("role", "system");
-            systemMessage.put("content", "You are a financial transaction categorizer. Your task is to categorize financial transactions into exactly one of the provided categories.");
-            messagesArray.add(systemMessage);
-            
-            // Add user message with the prompt
-            JSONObject userMessage = new JSONObject();
-            userMessage.put("role", "user");
-            userMessage.put("content", prompt);
-            messagesArray.add(userMessage);
-            
-            requestBody.put("messages", messagesArray);
-            requestBody.put("temperature", 0.1); // Low temperature for more deterministic responses
-            requestBody.put("max_tokens", 10);   // We only need a short response - just the category name
-            
-            String requestBodyJson = requestBody.toJSONString();
-            System.out.println("Request body: " + requestBodyJson);
-            
-            // Write request body to connection
-            try (OutputStream os = connection.getOutputStream()) {
-                byte[] input = requestBodyJson.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-                os.flush();
-            }
-            
-            // Read response
-            int responseCode = connection.getResponseCode();
-            System.out.println("API response code: " + responseCode);
-            
-            if (responseCode >= 200 && responseCode < 300) {
-                // Success response
-                try (BufferedReader br = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                    StringBuilder response = new StringBuilder();
-                    String responseLine;
-                    while ((responseLine = br.readLine()) != null) {
-                        response.append(responseLine.trim());
-                    }
-                    
-                    String fullResponse = response.toString();
-                    System.out.println("API full response: " + fullResponse);
-                    
-                    // Parse the JSON response to extract the AI's answer
-                    try {
-                        JSONParser parser = new JSONParser();
-                        JSONObject jsonResponse = (JSONObject) parser.parse(fullResponse);
-                        JSONArray choices = (JSONArray) jsonResponse.get("choices");
-                        
-                        if (choices != null && !choices.isEmpty()) {
-                            JSONObject firstChoice = (JSONObject) choices.get(0);
-                            JSONObject message = (JSONObject) firstChoice.get("message");
-                            
-                            if (message != null && message.containsKey("content")) {
-                                String content = ((String) message.get("content")).trim();
-                                System.out.println("Extracted content: " + content);
-                                return content;
-                            } else {
-                                System.err.println("Message does not contain content field");
-                            }
-                        } else {
-                            System.err.println("No choices in API response");
-                        }
-                    } catch (ParseException e) {
-                        System.err.println("Error parsing API response: " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                }
-            } else {
-                // Error response
-                try (BufferedReader br = new BufferedReader(
-                        new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8))) {
-                    StringBuilder errorResponse = new StringBuilder();
-                    String errorLine;
-                    while ((errorLine = br.readLine()) != null) {
-                        errorResponse.append(errorLine.trim());
-                    }
-                    System.err.println("API error response: " + errorResponse.toString());
-                }
-                
-                // If the API call fails, fall back to the simulation
-                System.out.println("Falling back to simulation due to API error");
-                return simulateAIResponse(prompt);
-            }
-            
-            // If we couldn't parse the response properly, fall back to simulation
-            System.out.println("Falling back to simulation due to parsing issues");
-            return simulateAIResponse(prompt);
-            
-        } catch (Exception e) {
-            System.err.println("Exception during API call: " + e.getMessage());
-            e.printStackTrace();
-            
-            // If an exception occurs, fall back to the simulation
-            System.out.println("Falling back to simulation due to exception");
-            return simulateAIResponse(prompt);
+    private static String analyzeTransactionContext(String description, String[] availableCategories) {
+        // Check for seasonal contexts
+        if (containsAny(description, "new year", "spring festival", "lunar", "red envelope", "hongbao", "festival", "holiday gift")) {
+            return findCategory("Chinese New Year", availableCategories);
         }
+        
+        // Check for recurring payment patterns
+        if (containsAny(description, "monthly", "subscription", "recurring", "plan", "membership")) {
+            // Determine subscription type
+            if (containsAny(description, "netflix", "hulu", "disney", "spotify", "music", "movie", "game", "stream")) {
+                return findCategory("Entertainment", availableCategories);
+            }
+            if (containsAny(description, "gym", "fitness", "workout", "health club")) {
+                return findCategory("Personal", availableCategories);
+            }
+            if (containsAny(description, "insurance", "coverage", "protection")) {
+                return findCategory("Insurance", availableCategories);
+            }
+        }
+        
+        // Check for transaction locations that provide context
+        if (containsAny(description, "restaurant", "café", "cafe", "bar", "dining", "lunch", "dinner", "breakfast")) {
+            return findCategory("Food", availableCategories);
+        }
+        if (containsAny(description, "hotel", "airbnb", "booking.com", "lodging", "accommodation", "resort", "stay")) {
+            return findCategory("Travel", availableCategories);
+        }
+        if (containsAny(description, "hospital", "clinic", "doctor", "dental", "medicine", "pharmacy", "prescription", "medical")) {
+            return findCategory("Healthcare", availableCategories);
+        }
+        
+        // No strong context detected
+        return null;
     }
     
     /**
-     * Simulates an AI response for demonstration purposes
-     * In a real implementation, this would be replaced with actual API response parsing
+     * Checks if a string contains any of the specified keywords
      * 
-     * @param prompt The prompt sent to the API
-     * @return A simulated AI response
+     * @param text Text to check
+     * @param keywords Keywords to look for
+     * @return True if any keyword is found
      */
-    private static String simulateAIResponse(String prompt) {
-        String description = prompt.substring(
-            prompt.indexOf("'") + 1, 
-            prompt.lastIndexOf("'")
-        ).toLowerCase();
+    private static boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Find a category from available categories (case insensitive)
+     * 
+     * @param targetCategory Category to find
+     * @param availableCategories Available categories
+     * @return The matching category or "Other" if not found
+     */
+    private static String findCategory(String targetCategory, String[] availableCategories) {
+        for (String category : availableCategories) {
+            if (category.equalsIgnoreCase(targetCategory)) {
+                return category;
+            }
+        }
         
-        // Simple keyword matching for demonstration
-        if (description.contains("school") || description.contains("book") || 
-            description.contains("tuition") || description.contains("class")) {
-            return "Education";
-        } 
-        else if (description.contains("doctor") || description.contains("hospital") || 
-                description.contains("medicine") || description.contains("pharmacy")) {
-            return "Medical";
+        // If we have "Other" in categories, use that
+        for (String category : availableCategories) {
+            if (category.equalsIgnoreCase("Other")) {
+                return category;
+            }
         }
-        else if (description.contains("hotel") || description.contains("flight") || 
-                description.contains("vacation") || description.contains("trip")) {
-            return "Travel";
+        
+        // Otherwise return the first category (should not happen)
+        return availableCategories.length > 0 ? availableCategories[0] : "Other";
+    }
+    
+    /**
+     * Finds the best fallback category when AI categorization fails
+     * 
+     * @param description The transaction description
+     * @param availableCategories Available categories
+     * @return Best guess category
+     */
+    private static String findBestFallbackCategory(String description, String[] availableCategories) {
+        // Try matching with common patterns first
+        String localMatch = matchLocalPatterns(description.toLowerCase(), availableCategories);
+        if (localMatch != null) {
+            return localMatch;
         }
-        else if (description.contains("grocery") || description.contains("restaurant") || 
-                description.contains("meal") || description.contains("cafe")) {
+        
+        // If no match found, try basic context analysis
+        String descLower = description.toLowerCase();
+        
+        // Try to match with most common transaction types
+        if (descLower.contains("grocery") || descLower.contains("restaurant") || 
+                descLower.contains("meal") || descLower.contains("cafe")) {
             return "Food";
         }
-        else if (description.contains("amazon") || description.contains("online") || 
-                description.contains("purchase") || description.contains("buy")) {
+        else if (descLower.contains("amazon") || descLower.contains("online") || 
+                descLower.contains("purchase") || descLower.contains("buy")) {
             return "Shopping";
         }
-        else if (description.contains("gym") || description.contains("fitness") || 
-                description.contains("sport") || description.contains("equipment")) {
+        else if (descLower.contains("gym") || descLower.contains("fitness") || 
+                descLower.contains("sport") || descLower.contains("equipment")) {
             return "Entertainment";
         }
-        else if (description.contains("bill") || description.contains("water") || 
-                description.contains("electricity") || description.contains("phone")) {
+        else if (descLower.contains("bill") || descLower.contains("water") || 
+                descLower.contains("electricity") || descLower.contains("phone")) {
             return "Utilities";
         }
-        else if (description.contains("rent") || description.contains("mortgage") || 
-                description.contains("lease") || description.contains("apartment")) {
+        else if (descLower.contains("rent") || descLower.contains("mortgage") || 
+                descLower.contains("lease") || descLower.contains("apartment")) {
             return "Housing";
         }
-        else if (description.contains("hongbao") || description.contains("new year") || 
-                description.contains("festival") || description.contains("spring festival")) {
+        else if (descLower.contains("hongbao") || descLower.contains("new year") || 
+                descLower.contains("festival") || descLower.contains("spring festival")) {
             return "Chinese New Year";
         }
-        else {
-            // Return "Other" as a fallback
-            return "Other";
+        
+        // Return "Other" as last resort
+        return findCategory("Other", availableCategories);
+    }
+    
+    /**
+     * Matches transaction description against local patterns
+     * 
+     * @param description The transaction description (lowercase)
+     * @param availableCategories Available categories
+     * @return Matched category or null if no match
+     */
+    private static String matchLocalPatterns(String description, String[] availableCategories) {
+        // Map of pattern keywords to categories
+        Map<String, String[]> categoryPatterns = new HashMap<>();
+        
+        // Food patterns
+        categoryPatterns.put("Food", new String[]{
+            "grocery", "supermarket", "restaurant", "food", "meal", "café", "cafe", "diner", 
+            "breakfast", "lunch", "dinner", "snack", "bakery", "coffee", "takeout", "delivery", 
+            "饭店", "食品", "餐厅", "超市", "外卖", "美食", "烹饪", "食品杂货"
+        });
+        
+        // Housing patterns
+        categoryPatterns.put("Housing", new String[]{
+            "rent", "mortgage", "lease", "apartment", "condo", "house", "property", "real estate",
+            "housing", "tenant", "landlord", "maintenance", "repair", "home", "residence",
+            "房租", "住房", "抵押贷款", "物业费", "房产", "公寓", "住宅", "维修"
+        });
+        
+        // Transportation patterns
+        categoryPatterns.put("Transportation", new String[]{
+            "gas", "petrol", "fuel", "car", "auto", "vehicle", "parking", "subway", "metro",
+            "bus", "train", "taxi", "uber", "lyft", "didi", "transit", "transportation", "toll",
+            "汽油", "加油", "停车", "出租车", "公交", "地铁", "交通", "滴滴", "高速费"
+        });
+        
+        // Entertainment patterns
+        categoryPatterns.put("Entertainment", new String[]{
+            "movie", "cinema", "theater", "concert", "show", "netflix", "hulu", "disney", "spotify",
+            "game", "gaming", "playstation", "xbox", "nintendo", "streaming", "subscription", "entertainment",
+            "电影", "电影院", "游戏", "演唱会", "表演", "直播", "娱乐", "订阅"
+        });
+        
+        // Utilities patterns
+        categoryPatterns.put("Utilities", new String[]{
+            "electricity", "water", "gas", "utility", "bill", "power", "energy", "internet",
+            "wifi", "broadband", "phone", "mobile", "cable", "tv", "garbage", "waste",
+            "电费", "水费", "煤气费", "电话费", "水电", "宽带", "网络", "垃圾处理"
+        });
+        
+        // Shopping patterns
+        categoryPatterns.put("Shopping", new String[]{
+            "amazon", "taobao", "jd", "tmall", "alibaba", "walmart", "target", "mall", "store",
+            "shop", "purchase", "buy", "shopping", "retail", "department", "online", "order",
+            "购物", "网购", "商店", "商场", "零售", "买", "购买", "订单"
+        });
+        
+        // Education patterns
+        categoryPatterns.put("Education", new String[]{
+            "school", "college", "university", "tuition", "course", "class", "education", "student",
+            "textbook", "book", "library", "learning", "study", "tutorial", "training", "workshop",
+            "学校", "大学", "学费", "课程", "教育", "学生", "书", "学习", "培训"
+        });
+        
+        // Healthcare patterns
+        categoryPatterns.put("Healthcare", new String[]{
+            "doctor", "hospital", "clinic", "medical", "health", "healthcare", "dental", "dentist",
+            "pharmacy", "medicine", "prescription", "therapy", "insurance", "treatment", "emergency",
+            "医生", "医院", "诊所", "药店", "医疗", "健康", "牙医", "保险", "治疗"
+        });
+        
+        // Chinese New Year patterns
+        categoryPatterns.put("Chinese New Year", new String[]{
+            "new year", "chinese new year", "spring festival", "lunar", "red envelope", "hongbao", 
+            "festival", "celebration", "holiday", "gift", "tradition", "lucky money", "annual", 
+            "春节", "新年", "红包", "过年", "春节", "拜年", "新春", "庆祝", "压岁钱"
+        });
+        
+        // Check each category's patterns
+        for (Map.Entry<String, String[]> entry : categoryPatterns.entrySet()) {
+            String category = entry.getKey();
+            String[] patterns = entry.getValue();
+            
+            for (String pattern : patterns) {
+                if (description.contains(pattern)) {
+                    // Check if this category is in available categories
+                    return findCategory(category, availableCategories);
+                }
+            }
         }
+        
+        // No pattern match found
+        return null;
     }
     
     /**
@@ -653,5 +717,101 @@ public class DeepSeekAPI {
         
         // Default to "Other" if the result is not a valid category
         return "Other";
+    }
+
+    /**
+     * Makes a direct API call for categorization purposes
+     * 
+     * @param prompt The prompt to send to the API
+     * @return The API response
+     * @throws IOException If an error occurs during the API call
+     */
+    private static String makeAPICall(String prompt) throws IOException {
+        URL url = new URL(BASE_URL);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setRequestProperty("Authorization", "Bearer " + DEFAULT_API_KEY);
+        connection.setDoOutput(true);
+        connection.setConnectTimeout(10000); // 10 seconds timeout
+        connection.setReadTimeout(30000);    // 30 seconds timeout
+        
+        // Create single message for categorization
+        JSONArray messagesArray = new JSONArray();
+        
+        // System message for better categorization
+        JSONObject systemMessage = new JSONObject();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", "You are a financial transaction categorizer. Analyze the transaction and respond with only the category name.");
+        messagesArray.add(systemMessage);
+        
+        // User message with the prompt
+        JSONObject userMessage = new JSONObject();
+        userMessage.put("role", "user");
+        userMessage.put("content", prompt);
+        messagesArray.add(userMessage);
+        
+        // Create request body
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("model", MODEL_CHAT);
+        requestBody.put("messages", messagesArray);
+        requestBody.put("stream", false);
+        requestBody.put("temperature", 0.1); // Low temperature for more consistent results
+        requestBody.put("max_tokens", 50); // Short response needed
+        
+        // Write request body to connection
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = requestBody.toJSONString().getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+        
+        // Check response code
+        int responseCode = connection.getResponseCode();
+        
+        // Read response
+        if (responseCode >= 200 && responseCode < 300) {
+            // Success response
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine);
+                }
+                
+                // Parse JSON response to extract just the content
+                JSONParser parser = new JSONParser();
+                JSONObject jsonResponse = (JSONObject) parser.parse(response.toString());
+                JSONArray choices = (JSONArray) jsonResponse.get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    JSONObject firstChoice = (JSONObject) choices.get(0);
+                    JSONObject message = (JSONObject) firstChoice.get("message");
+                    if (message != null) {
+                        String content = (String) message.get("content");
+                        return content.trim();
+                    }
+                }
+                
+                return response.toString();
+            } catch (ParseException e) {
+                System.err.println("Error parsing API response: " + e.getMessage());
+                e.printStackTrace();
+                return "Other"; // Default fallback
+            }
+        } else {
+            // Error response
+            System.err.println("API error response code: " + responseCode);
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String errorLine;
+                while ((errorLine = br.readLine()) != null) {
+                    response.append(errorLine);
+                }
+                System.err.println("API error response: " + response.toString());
+            }
+            
+            throw new IOException("API error: " + responseCode);
+        }
     }
 } 
