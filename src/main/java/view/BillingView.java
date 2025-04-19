@@ -19,6 +19,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import model.SessionManager;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  * BillingView - The billing and subscriptions screen with transaction management.
@@ -779,26 +782,27 @@ public class BillingView extends JFrame {
         importPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
         // Header
-        JLabel headerLabel = new JLabel("Import Transactions");
+        JLabel headerLabel = new JLabel("Import Transactions from CSV");
         headerLabel.setFont(SUBHEADER_FONT);
         
-        // Instructions
-        JLabel instructionsLabel = new JLabel("<html><p>Import transactions from your bank or financial institution.</p>" +
-                "<p>Supported formats: CSV</p>" +
-                "<p>Our AI will automatically categorize your transactions based on descriptions.</p></html>");
+        // Enhanced Instructions
+        JLabel instructionsLabel = new JLabel("<html><p>Import transactions from a CSV file obtained from your bank or financial institution.</p>"
+                + "<p><b>Supported formats:</b> CSV (comma, semicolon, or tab separated)</p>"
+                + "<p><b>Required columns (can be in any order):</b> Date, Description, Category, Amount</p>"
+                + "<p><b>Supported date formats:</b> yyyy-MM-dd, yyyy/MM/dd, MM/dd/yyyy, dd/MM/yyyy, yyyy.MM.dd, etc.</p>"
+                + "<p>Our system will attempt to automatically detect the file format and column headers.</p></html>");
         instructionsLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
         
         // File selection
         JPanel selectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         selectionPanel.setBackground(Color.WHITE);
         
-        JTextField filePathField = new JTextField(25);
+        JTextField filePathField = new JTextField(35); // Increased size
         filePathField.setEditable(false);
         
         JButton browseButton = new JButton("Browse");
         browseButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            // 添加CSV文件过滤器，避免图标问题
             fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
                 @Override
                 public boolean accept(java.io.File f) {
@@ -823,7 +827,6 @@ public class BillingView extends JFrame {
                     filePathField.setText(fileChooser.getSelectedFile().getPath());
                 }
             } catch (Exception ex) {
-                // 出现错误时显示友好的错误消息
                 JOptionPane.showMessageDialog(
                     importPanel, 
                     "无法打开文件选择器: " + ex.getMessage(),
@@ -834,24 +837,22 @@ public class BillingView extends JFrame {
             }
         });
         
+        // Add Generic Sample CSV download button
+        JButton genericSampleButton = new JButton("Download Sample CSV");
+        genericSampleButton.setToolTipText("Download a sample CSV file showing the expected format");
+        genericSampleButton.setBackground(new Color(224, 224, 224));
+        genericSampleButton.setForeground(Color.BLACK);
+        genericSampleButton.setFocusPainted(false);
+        genericSampleButton.addActionListener(e -> downloadGenericSampleCsv());
+        selectionPanel.add(genericSampleButton);
+        
         selectionPanel.add(filePathField);
         selectionPanel.add(browseButton);
         
-        // Bank selection
-        JPanel bankPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        bankPanel.setBackground(Color.WHITE);
-        
-        JLabel bankLabel = new JLabel("Bank:");
-        String[] banks = {"Select your bank", "Bank of China", "ICBC", "China Construction Bank", "Agricultural Bank of China", "Bank of Communications", "China Merchants Bank", "Other"};
-        JComboBox<String> bankCombo = new JComboBox<>(banks);
-        
-        bankPanel.add(bankLabel);
-        bankPanel.add(bankCombo);
-        
-        // AI settings panel
+        // AI settings panel (remains the same)
         JPanel aiPanel = new JPanel();
         aiPanel.setLayout(new BoxLayout(aiPanel, BoxLayout.Y_AXIS));
-        aiPanel.setBackground(new Color(240, 248, 255)); // Light blue background
+        aiPanel.setBackground(new Color(240, 248, 255));
         aiPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(173, 216, 230), 1),
             BorderFactory.createEmptyBorder(10, 10, 10, 10)
@@ -862,12 +863,12 @@ public class BillingView extends JFrame {
         aiSettingsLabel.setFont(new Font("Arial", Font.BOLD, 14));
         aiSettingsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JCheckBox autoCategorizeBox = new JCheckBox("Automatically categorize transactions");
+        JCheckBox autoCategorizeBox = new JCheckBox("Automatically categorize transactions using AI");
         autoCategorizeBox.setSelected(true);
         autoCategorizeBox.setBackground(new Color(240, 248, 255));
         autoCategorizeBox.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JCheckBox reviewBeforeSaveBox = new JCheckBox("Review transactions before saving");
+        JCheckBox reviewBeforeSaveBox = new JCheckBox("Review transactions before saving (Recommended)");
         reviewBeforeSaveBox.setSelected(true);
         reviewBeforeSaveBox.setBackground(new Color(240, 248, 255));
         reviewBeforeSaveBox.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -892,49 +893,39 @@ public class BillingView extends JFrame {
         importButton.setOpaque(true);
         importButton.setBorderPainted(false);
         importButton.setFocusPainted(false);
-        importButton.setEnabled(false);
+        importButton.setEnabled(false); // Enabled when file is selected
         
-        // Enable import button only when file is selected and bank is chosen
-        DocumentListener documentListener = new DocumentListener() {
+        // Enable import button only when file path is filled
+        filePathField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
-            public void insertUpdate(DocumentEvent e) {
-                checkFields();
-            }
-
+            public void insertUpdate(DocumentEvent e) { checkFields(); }
             @Override
-            public void removeUpdate(DocumentEvent e) {
-                checkFields();
-            }
-
+            public void removeUpdate(DocumentEvent e) { checkFields(); }
             @Override
-            public void changedUpdate(DocumentEvent e) {
-                checkFields();
-            }
+            public void changedUpdate(DocumentEvent e) { checkFields(); }
             
             private void checkFields() {
-                importButton.setEnabled(!filePathField.getText().isEmpty() && 
-                        bankCombo.getSelectedIndex() != 0);
+                importButton.setEnabled(!filePathField.getText().isEmpty());
             }
-        };
+        });
         
-        filePathField.getDocument().addDocumentListener(documentListener);
-        bankCombo.addActionListener(e -> 
-            importButton.setEnabled(!filePathField.getText().isEmpty() && 
-                    bankCombo.getSelectedIndex() != 0)
-        );
-        
-        // Create a panel to hold the components
+        // Create a panel to hold the main components
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setBackground(Color.WHITE);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         
-        // Add all components
+        // Align components to the left
+        headerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        instructionsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        selectionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        aiPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Add components to the content panel
         contentPanel.add(headerLabel);
         contentPanel.add(instructionsLabel);
         contentPanel.add(selectionPanel);
-        contentPanel.add(Box.createVerticalStrut(10));
-        contentPanel.add(bankPanel);
+        // Removed bankPanel here
         contentPanel.add(Box.createVerticalStrut(20));
         contentPanel.add(aiPanel);
         contentPanel.add(Box.createVerticalStrut(20));
@@ -942,27 +933,29 @@ public class BillingView extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.add(importButton);
+        buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         contentPanel.add(buttonPanel);
         
-        // Add seasonal spending notice - enhanced for Chinese New Year
+        // Add seasonal spending notice (remains the same)
         JPanel seasonalPanel = new JPanel();
         seasonalPanel.setLayout(new BorderLayout());
-        seasonalPanel.setBackground(new Color(255, 240, 240)); // Light red for Chinese New Year theme
+        seasonalPanel.setBackground(new Color(255, 240, 240));
         seasonalPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(255, 153, 153), 1),
             BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
+        seasonalPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        seasonalPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100)); // Set max height
         
         JLabel seasonalLabel = new JLabel("<html><b>Chinese New Year Spending Notice:</b> " +
                 "Our AI has detected higher spending patterns typical for Chinese New Year season. " +
-                "Based on your historical data, we predict you might spend approximately 35% more " +
-                "in categories like Gifts, Food, and Travel. Would you like to adjust your budget for this period?</html>");
+                "Consider reviewing your budget.</html>");
         
         JPanel buttonContainerPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonContainerPanel.setBackground(new Color(255, 240, 240));
         
         JButton adjustButton = new JButton("Adjust Budget");
-        adjustButton.setBackground(new Color(229, 57, 53)); // Red for Chinese New Year
+        adjustButton.setBackground(new Color(229, 57, 53));
         adjustButton.setForeground(Color.WHITE);
         adjustButton.setOpaque(true);
         adjustButton.setBorderPainted(false);
@@ -979,11 +972,15 @@ public class BillingView extends JFrame {
         seasonalPanel.add(seasonalLabel, BorderLayout.CENTER);
         seasonalPanel.add(buttonContainerPanel, BorderLayout.SOUTH);
         
+        contentPanel.add(Box.createVerticalStrut(20));
         contentPanel.add(seasonalPanel);
+        
+        // Add filler to push content to the top
+        contentPanel.add(Box.createVerticalGlue());
         
         importPanel.add(contentPanel, BorderLayout.NORTH);
         
-        // Preview area
+        // Preview area (remains the same for now, might be enhanced later)
         JLabel previewLabel = new JLabel("Transaction Preview (after import)");
         previewLabel.setFont(SUBHEADER_FONT);
         previewLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
@@ -992,7 +989,6 @@ public class BillingView extends JFrame {
         previewPanel.setBackground(Color.WHITE);
         previewPanel.add(previewLabel, BorderLayout.NORTH);
         
-        // Create a sample table to show imported data (empty for now)
         String[] columnNames = {"Date", "Description", "Category", "Amount", "AI Confidence"};
         Object[][] data = {};
         JTable previewTable = new JTable(data, columnNames);
@@ -1001,15 +997,15 @@ public class BillingView extends JFrame {
         
         previewPanel.add(tableScroll, BorderLayout.CENTER);
         
-        importPanel.add(previewPanel, BorderLayout.CENTER);
+        // importPanel.add(previewPanel, BorderLayout.CENTER); // Add preview later if needed
         
         this.contentPanel.add(importPanel, "import");
         
+        // Import button action listener (remains mostly the same, no bank dependency)
         importButton.addActionListener(e -> {
             String filePath = filePathField.getText();
             if (!filePath.isEmpty()) {
                 try {
-                    // 显示处理中的对话框
                     JDialog processingDialog = new JDialog(this, "导入中...", false);
                     JLabel processingLabel = new JLabel("正在导入交易数据，请稍候...");
                     processingLabel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -1017,14 +1013,19 @@ public class BillingView extends JFrame {
                     processingDialog.pack();
                     processingDialog.setLocationRelativeTo(this);
                     
-                    // 使用SwingWorker在后台线程中处理导入
                     SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
                         private String errorMessage = null;
+                        private boolean hasDetailedError = false;
                         
                         @Override
                         protected Void doInBackground() {
                             try {
+                                // Import directly using the format detection in TransactionManager
                                 TransactionManager.importFromCSV(filePath);
+                            } catch (TransactionManager.ImportException ex) {
+                                errorMessage = ex.getMessage();
+                                hasDetailedError = true;
+                                ex.printStackTrace();
                             } catch (Exception ex) {
                                 errorMessage = ex.getMessage();
                                 ex.printStackTrace();
@@ -1045,12 +1046,16 @@ public class BillingView extends JFrame {
                                 );
                                 refreshTransactionsDisplay();
                             } else {
-                                JOptionPane.showMessageDialog(
-                                    BillingView.this, 
-                                    "导入交易时出错: " + errorMessage, 
-                                    "导入错误", 
-                                    JOptionPane.ERROR_MESSAGE
-                                );
+                                if (hasDetailedError && errorMessage.contains("Import completed with errors")) {
+                                    showDetailedErrorDialog(errorMessage);
+                                } else {
+                                    JOptionPane.showMessageDialog(
+                                        BillingView.this, 
+                                        "导入交易时出错: " + errorMessage, 
+                                        "导入错误", 
+                                        JOptionPane.ERROR_MESSAGE
+                                    );
+                                }
                             }
                         }
                     };
@@ -1075,6 +1080,154 @@ public class BillingView extends JFrame {
                 );
             }
         });
+    }
+    
+    /**
+     * Displays a detailed error dialog for CSV import errors
+     * @param errorMessage The detailed error message from ImportException
+     */
+    private void showDetailedErrorDialog(String errorMessage) {
+        // Create a custom dialog for showing detailed import errors
+        JDialog errorDialog = new JDialog(this, "Import Results", true);
+        errorDialog.setLayout(new BorderLayout());
+        errorDialog.setSize(600, 400);
+        errorDialog.setLocationRelativeTo(this);
+        
+        // Create text area for errors with scroll capability
+        JTextArea errorArea = new JTextArea(errorMessage);
+        errorArea.setEditable(false);
+        errorArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        errorArea.setLineWrap(true);
+        errorArea.setWrapStyleWord(true);
+        errorArea.setMargin(new Insets(10, 10, 10, 10));
+        
+        JScrollPane scrollPane = new JScrollPane(errorArea);
+        
+        // Add header panel with icon and title
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        
+        JLabel warningIcon = new JLabel(UIManager.getIcon("OptionPane.warningIcon"));
+        JLabel titleLabel = new JLabel("Import completed with errors");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        
+        headerPanel.add(warningIcon, BorderLayout.WEST);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        // Add buttons panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
+        
+        JButton closeButton = new JButton("Close");
+        closeButton.addActionListener(e -> errorDialog.dispose());
+        
+        JButton viewHelpButton = new JButton("View Help");
+        viewHelpButton.addActionListener(e -> {
+            // Open help for CSV import format guidelines
+            JOptionPane.showMessageDialog(errorDialog,
+                "CSV Import Guidelines:\n\n" +
+                "1. Ensure your CSV file has headers for Date, Description, Category, and Amount\n" +
+                "2. Supported date formats: YYYY-MM-DD, YYYY/MM/DD, MM/DD/YYYY\n" +
+                "3. Amount should be a number, with optional currency symbols\n" +
+                "4. For best results, export CSV files directly from your banking app\n\n" +
+                "We support formats from: Bank of China, ICBC, China Construction Bank, and many others.",
+                "CSV Import Help",
+                JOptionPane.INFORMATION_MESSAGE);
+        });
+        
+        buttonPanel.add(viewHelpButton);
+        buttonPanel.add(closeButton);
+        
+        // Add everything to dialog
+        errorDialog.add(headerPanel, BorderLayout.NORTH);
+        errorDialog.add(scrollPane, BorderLayout.CENTER);
+        errorDialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        // Show dialog
+        errorDialog.setVisible(true);
+    }
+    
+    /**
+     * Handles the download action for the generic sample CSV file.
+     */
+    private void downloadGenericSampleCsv() {
+        // Define standard headers and a common date format
+        String[] headers = {"Date", "Description", "Category", "Amount"};
+        String dateFormat = "yyyy-MM-dd"; // Use a common, unambiguous format
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(dateFormat);
+        LocalDate today = LocalDate.now();
+        
+        // Create the CSV content
+        StringBuilder csvContent = new StringBuilder();
+        csvContent.append(String.join(",", headers)).append("\n");
+        
+        // Add sample rows
+        csvContent.append(today.format(formatter)).append(",");
+        csvContent.append("\"Grocery Shopping, Local Market\","); // Fixed: Comma inside quotes
+        csvContent.append("Food,");
+        csvContent.append("150.75\n");
+        
+        csvContent.append(today.minusDays(2).format(formatter)).append(",");
+        csvContent.append("Monthly Rent Payment,");
+        csvContent.append("Housing,");
+        csvContent.append("\"3,500.00\"\n"); // Example with quotes and comma
+        
+        csvContent.append(today.minusDays(5).format(formatter)).append(",");
+        csvContent.append("DiDi Ride,");
+        csvContent.append("Transportation,");
+        csvContent.append("35.50\n");
+        
+        csvContent.append(today.minusDays(7).format(formatter)).append(",");
+        csvContent.append("Netflix Subscription,");
+        csvContent.append("Entertainment,");
+        csvContent.append("49.99\n");
+        
+        csvContent.append(today.minusDays(10).format(formatter)).append(",");
+        csvContent.append("Red Envelope Gift,");
+        csvContent.append("Chinese New Year,");
+        csvContent.append("888.00\n");
+
+        // Use JFileChooser to let the user choose where to save the file
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Save Sample CSV");
+        fileChooser.setSelectedFile(new File("sample_transactions.csv"));
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+            @Override
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".csv");
+            }
+            @Override
+            public String getDescription() {
+                return "CSV Files (*.csv)";
+            }
+        });
+
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = fileChooser.getSelectedFile();
+            // Ensure the file has a .csv extension
+            String filePath = fileToSave.getAbsolutePath();
+            if (!filePath.toLowerCase().endsWith(".csv")) {
+                fileToSave = new File(filePath + ".csv");
+            }
+            
+            // Write the content to the selected file
+            try (FileWriter writer = new FileWriter(fileToSave)) {
+                writer.write(csvContent.toString());
+                JOptionPane.showMessageDialog(this,
+                    "Sample CSV file saved successfully to:\n" + fileToSave.getAbsolutePath(),
+                    "Sample Saved",
+                    JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this,
+                    "Error saving sample CSV file: " + ex.getMessage(),
+                    "File Save Error",
+                    JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        }
     }
     
     /**
