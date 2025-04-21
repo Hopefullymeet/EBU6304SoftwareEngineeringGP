@@ -7,6 +7,16 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import model.SessionManager;
+import model.UserManager;
+import model.Transaction;
+import model.TransactionManager;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import model.User;
+import model.CurrencyManager;
 
 /**
  * BudgetView - The budget management screen.
@@ -23,10 +33,21 @@ public class BudgetView extends JFrame {
     private JPanel budgetPanel;
     private JPanel insightsPanel;
     private JPanel helpCenterPanel;
+    private JPanel financialAdvisorPanel;
     
     // Budget sub-items container
     private JPanel budgetSubItems;
     private boolean budgetExpanded = true;
+    
+    // Content cards
+    private CardLayout cardLayout;
+    private JPanel cardsPanel;
+    private final String BUDGET_OVERVIEW_PANEL = "BudgetOverviewPanel";
+    private final String AI_INSIGHTS_PANEL = "AIInsightsPanel";
+    private final String BUDGET_SETTINGS_PANEL = "BudgetSettingsPanel";
+    
+    // Budget insights panel
+    private BudgetInsightsPanel budgetInsightsPanel;
     
     // Colors and styling
     private final Color PRIMARY_BLUE = new Color(52, 152, 219);
@@ -37,21 +58,48 @@ public class BudgetView extends JFrame {
     private final Font CONTENT_FONT = new Font("Arial", Font.PLAIN, 14);
     private final Font SIDEBAR_FONT = new Font("Arial", Font.PLAIN, 14);
     
+    // Managers
+    private CurrencyManager currencyManager;
+    
+    private JComboBox<String> currencySelector;
+    private User currentUser;
+    
     /**
      * Constructor for the BudgetView
      */
     public BudgetView() {
+        currencyManager = CurrencyManager.getInstance();
+
         setTitle("Budget");
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
-        
+
+        User currentUser = UserManager.getInstance().getCurrentUser();
+
         createHeader();
         createSidebar();
+        
+        // Create card layout for different content panels
+        cardLayout = new CardLayout();
+        cardsPanel = new JPanel(cardLayout);
+        cardsPanel.setBackground(Color.WHITE);
+        
+        // Add different content panels to the card layout
         createBudgetContent();
+        createBudgetInsightsPanel();
+        createBudgetSettingsPanel();
+        
+        add(cardsPanel, BorderLayout.CENTER);
+        
+        // Default view is budget overview panel
+        cardLayout.show(cardsPanel, BUDGET_OVERVIEW_PANEL);
         
         setLocationRelativeTo(null);
         setVisible(true);
+        
+        // Start session monitoring
+        SessionManager.getInstance().startSession(this);
     }
     
     /**
@@ -88,6 +136,12 @@ public class BudgetView extends JFrame {
         logoutButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                // Stop session monitoring
+                SessionManager.getInstance().stopSession();
+                
+                // Log out the user
+                UserManager.getInstance().logout();
+                
                 dispose(); // Close current window
                 new LoginView(); // Return to login screen
             }
@@ -114,6 +168,7 @@ public class BudgetView extends JFrame {
         billingPanel = createSidebarItem("Billing & Subscriptions", false, false);
         budgetPanel = createSidebarItem("Budget", false, true);
         helpCenterPanel = createSidebarItem("Help Center", false, false);
+        financialAdvisorPanel = createSidebarItem("Financial Advisor", false, false);
         
         // Create Budget sub-items container
         budgetSubItems = new JPanel();
@@ -154,11 +209,19 @@ public class BudgetView extends JFrame {
             }
         });
         
+        // Add click listener for Financial Advisor
+        financialAdvisorPanel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent evt) {
+                dispose();
+                new FinancialAdvisorView();
+            }
+        });
+        
         // Add click listeners for Budget sub-items
         budgetOverviewPanel.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent evt) {
                 setActiveSidebarItem(budgetOverviewPanel);
-                // Show budget overview panel (main panel)
+                cardLayout.show(cardsPanel, BUDGET_OVERVIEW_PANEL);
             }
         });
         
@@ -166,6 +229,9 @@ public class BudgetView extends JFrame {
             public void mouseClicked(MouseEvent evt) {
                 setActiveSidebarItem(aiInsightsPanel);
                 // Show AI insights panel
+                cardLayout.show(cardsPanel, AI_INSIGHTS_PANEL);
+                // Update the budget insights data
+                updateBudgetInsightsData();
             }
         });
         
@@ -173,6 +239,7 @@ public class BudgetView extends JFrame {
             public void mouseClicked(MouseEvent evt) {
                 setActiveSidebarItem(budgetSettingsPanel);
                 // Show budget settings panel
+                cardLayout.show(cardsPanel, BUDGET_SETTINGS_PANEL);
             }
         });
         
@@ -192,6 +259,8 @@ public class BudgetView extends JFrame {
         sidebarPanel.add(budgetSubItems);
         sidebarPanel.add(Box.createVerticalStrut(5));
         sidebarPanel.add(helpCenterPanel);
+        sidebarPanel.add(Box.createVerticalStrut(5));
+        sidebarPanel.add(financialAdvisorPanel);
         
         // Add a glue component to push everything to the top
         sidebarPanel.add(Box.createVerticalGlue());
@@ -329,6 +398,37 @@ public class BudgetView extends JFrame {
         insightsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         insightsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
         
+        // Load transaction data for summary calculations
+        List<Transaction> transactions = TransactionManager.loadTransactions();
+        double totalSpent = 0.0;
+        Map<String, Double> categorySpending = new HashMap<>();
+        
+        // Calculate totals
+        for (Transaction transaction : transactions) {
+            double amount = transaction.getAmount();
+            totalSpent += amount;
+            
+            String category = transaction.getCategory();
+            categorySpending.put(category, 
+                categorySpending.getOrDefault(category, 0.0) + amount);
+        }
+        
+        // If no transactions, use sample data
+        if (transactions.isEmpty()) {
+            // Sample data matching the one in BudgetInsightsPanel
+            totalSpent = 3240.75;
+            categorySpending.put("Housing", 1500.0);
+            categorySpending.put("Food & Dining", 650.25);
+            categorySpending.put("Transportation", 420.50);
+            categorySpending.put("Utilities", 340.0);
+            categorySpending.put("Entertainment", 200.0);
+            categorySpending.put("Other", 130.0);
+        }
+        
+        // Budget values - Use same totalBudget as in BudgetInsightsPanel
+        double totalBudget = 5000.00;
+        double remaining = totalBudget - totalSpent;
+        
         // Budget summary section
         JLabel summaryLabel = new JLabel("Budget Summary");
         summaryLabel.setFont(SUBHEADER_FONT);
@@ -341,10 +441,10 @@ public class BudgetView extends JFrame {
         summaryPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         summaryPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
         
-        // Add summary cards
-        addSummaryCard(summaryPanel, "Total Budget", "¥5,000.00", new Color(52, 152, 219));
-        addSummaryCard(summaryPanel, "Spent", "¥3,240.75", new Color(46, 204, 113));
-        addSummaryCard(summaryPanel, "Remaining", "¥1,759.25", new Color(155, 89, 182));
+        // Add summary cards with actual data
+        addSummaryCard(summaryPanel, "Total Budget", String.format("¥%.2f", totalBudget), new Color(52, 152, 219));
+        addSummaryCard(summaryPanel, "Spent", String.format("¥%.2f", totalSpent), new Color(46, 204, 113));
+        addSummaryCard(summaryPanel, "Remaining", String.format("¥%.2f", remaining), new Color(155, 89, 182));
         
         // Category breakdown section
         JLabel categoriesLabel = new JLabel("Category Breakdown");
@@ -357,32 +457,88 @@ public class BudgetView extends JFrame {
         categoriesPanel.setBorder(new EmptyBorder(15, 0, 30, 0));
         categoriesPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        // Add category items
-        addCategoryItem(categoriesPanel, "Housing", 1500.00, 1500.00, new Color(41, 128, 185));
-        addCategoryItem(categoriesPanel, "Food & Dining", 800.00, 650.25, new Color(39, 174, 96));
-        addCategoryItem(categoriesPanel, "Transportation", 400.00, 350.50, new Color(142, 68, 173));
-        addCategoryItem(categoriesPanel, "Entertainment", 300.00, 275.00, new Color(243, 156, 18));
-        addCategoryItem(categoriesPanel, "Shopping", 400.00, 325.00, new Color(231, 76, 60));
-        addCategoryItem(categoriesPanel, "Utilities", 350.00, 140.00, new Color(52, 73, 94));
-        addCategoryItem(categoriesPanel, "Chinese New Year", 800.00, 0.00, new Color(220, 20, 60));
+        // Budget allocations by category - could be refined with actual budget allocations
+        Map<String, Double> categoryBudgets = new HashMap<>();
         
-        // Add seasonal budget planning section
-        JPanel seasonalPanel = createSeasonalBudgetPanel();
-        seasonalPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Define category colors for consistency
+        Map<String, Color> categoryColors = new HashMap<>();
+        categoryColors.put("Housing", new Color(41, 128, 185));
+        categoryColors.put("Food & Dining", new Color(39, 174, 96));
+        categoryColors.put("Transportation", new Color(142, 68, 173));
+        categoryColors.put("Entertainment", new Color(243, 156, 18));
+        categoryColors.put("Shopping", new Color(231, 76, 60));
+        categoryColors.put("Utilities", new Color(52, 73, 94));
+        categoryColors.put("Chinese New Year", new Color(220, 20, 60));
+        categoryColors.put("Other", new Color(149, 165, 166));
+        categoryColors.put("Medical", new Color(41, 128, 185));
+        categoryColors.put("Education", new Color(39, 174, 96));
+        categoryColors.put("Travel", new Color(142, 68, 173));
+        
+        // Create simple budget allocations based on typical percentages
+        categoryBudgets.put("Housing", totalBudget * 0.3); // 30% of budget
+        categoryBudgets.put("Food & Dining", totalBudget * 0.2); // 20% of budget
+        categoryBudgets.put("Transportation", totalBudget * 0.1); // 10% of budget
+        categoryBudgets.put("Entertainment", totalBudget * 0.1); // 10% of budget
+        categoryBudgets.put("Utilities", totalBudget * 0.1); // 10% of budget
+        categoryBudgets.put("Shopping", totalBudget * 0.1); // 10% of budget
+        categoryBudgets.put("Chinese New Year", totalBudget * 0.05); // 5% of budget
+        categoryBudgets.put("Other", totalBudget * 0.05); // 5% of budget
+        
+        // Add any categories that exist in transactions but not in budgets
+        for (String category : categorySpending.keySet()) {
+            if (!categoryBudgets.containsKey(category)) {
+                categoryBudgets.put(category, totalBudget * 0.05); // Default 5% allocation
+            }
+            
+            if (!categoryColors.containsKey(category)) {
+                // Generate a color if not defined
+                categoryColors.put(category, new Color(149, 165, 166)); // Default gray
+            }
+        }
+        
+        // Add category items based on actual spending
+        for (Map.Entry<String, Double> entry : categorySpending.entrySet()) {
+            String category = entry.getKey();
+            double spent = entry.getValue();
+            double budget = categoryBudgets.getOrDefault(category, totalBudget * 0.05);
+            Color color = categoryColors.getOrDefault(category, new Color(149, 165, 166));
+            
+            addCategoryItem(categoriesPanel, category, budget, spent, color);
+        }
         
         // Recent transactions section
         JLabel transactionsLabel = new JLabel("Recent Transactions");
         transactionsLabel.setFont(SUBHEADER_FONT);
         transactionsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
+        // Create table model for recent transactions
         String[] columnNames = {"Date", "Description", "Category", "Amount"};
-        Object[][] data = {
-            {"Jan 20, 2024", "Grocery Store", "Food & Dining", "-¥85.43"},
-            {"Jan 18, 2024", "Gas Station", "Transportation", "-¥45.75"},
-            {"Jan 15, 2024", "Coffee Shop", "Food & Dining", "-¥4.50"},
-            {"Jan 14, 2024", "Online Store", "Shopping", "-¥67.89"},
-            {"Jan 12, 2024", "Electric Bill", "Utilities", "-¥98.76"}
-        };
+        Object[][] data;
+        
+        if (transactions.isEmpty()) {
+            // Sample data if no transactions
+            data = new Object[][] {
+                {"2024-01-20", "Grocery Store", "Food & Dining", "-¥85.43"},
+                {"2024-01-18", "Gas Station", "Transportation", "-¥45.75"},
+                {"2024-01-15", "Coffee Shop", "Food & Dining", "-¥4.50"},
+                {"2024-01-14", "Online Store", "Shopping", "-¥67.89"},
+                {"2024-01-12", "Electric Bill", "Utilities", "-¥98.76"}
+            };
+        } else {
+            // Get actual transactions (up to 5 most recent)
+            int count = Math.min(transactions.size(), 5);
+            data = new Object[count][4];
+            
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            
+            for (int i = 0; i < count; i++) {
+                Transaction transaction = transactions.get(i);
+                data[i][0] = transaction.getDate().format(formatter);
+                data[i][1] = transaction.getDescription();
+                data[i][2] = transaction.getCategory();
+                data[i][3] = String.format("-¥%.2f", transaction.getAmount());
+            }
+        }
         
         JTable transactionsTable = new JTable(data, columnNames);
         transactionsTable.setFont(CONTENT_FONT);
@@ -432,9 +588,6 @@ public class BudgetView extends JFrame {
         containerPanel.add(Box.createVerticalStrut(20));
         containerPanel.add(budgetDetails);
         containerPanel.add(Box.createVerticalStrut(20));
-        containerPanel.add(seasonalPanel);
-        containerPanel.add(Box.createVerticalStrut(20));
-        containerPanel.add(actionsPanel);
         
         // Add scroll pane for container panel
         JScrollPane scrollPane = new JScrollPane(containerPanel);
@@ -444,7 +597,8 @@ public class BudgetView extends JFrame {
         // Add components to main panel
         contentPanel.add(scrollPane, BorderLayout.CENTER);
         
-        add(contentPanel, BorderLayout.CENTER);
+        // Add to cards panel
+        cardsPanel.add(contentPanel, BUDGET_OVERVIEW_PANEL);
     }
     
     /**
@@ -477,11 +631,49 @@ public class BudgetView extends JFrame {
         insightsContentPanel.setLayout(new BoxLayout(insightsContentPanel, BoxLayout.Y_AXIS));
         insightsContentPanel.setBackground(new Color(240, 248, 255));
         
-        JLabel insightsText = new JLabel("<html>" +
-                "<p>• Based on your spending patterns, you could save <b>¥350/month</b> by reducing dining out expenses.</p>" +
-                "<p>• Your utility bills are <b>18% lower</b> than similar households in your region.</p>" +
-                "<p>• <span style='color:#c0392b;'><b>Alert:</b> Chinese New Year preparations should start soon. Budget ¥800 based on last year.</span></p>" +
-                "</html>");
+        // Calculate insights based on actual data
+        List<Transaction> transactions = TransactionManager.loadTransactions();
+        double totalSpent = 0.0;
+        for (Transaction transaction : transactions) {
+            totalSpent += transaction.getAmount();
+        }
+        
+        // Calculate sample insights
+        double foodPercentage = 0.0;
+        double housingPercentage = 0.0;
+        
+        for (Transaction transaction : transactions) {
+            if (transaction.getCategory().equals("Food & Dining")) {
+                foodPercentage += transaction.getAmount() / totalSpent * 100;
+            } else if (transaction.getCategory().equals("Housing")) {
+                housingPercentage += transaction.getAmount() / totalSpent * 100;
+            }
+        }
+        
+        String insightsHTML = "<html>";
+        if (transactions.isEmpty()) {
+            // Default insights if no transactions
+            insightsHTML += "<p>• Based on your spending patterns, you could save <b>¥350/month</b> by reducing dining out expenses.</p>" +
+                     "<p>• Your utility bills are <b>18% lower</b> than similar households in your region.</p>" +
+                     "<p>• <span style='color:#c0392b;'><b>Alert:</b> Your remaining budget is ¥4975.00. Click 'AI Insights' for personalized recommendations.</span></p>";
+        } else {
+            // Dynamic insights based on actual data
+            double totalBudget = 5000.00;
+            double remaining = totalBudget - totalSpent;
+            
+            insightsHTML += "<p>• You've spent <b>" + String.format("%.1f", (totalSpent/totalBudget*100)) + 
+                    "%</b> of your monthly budget with <b>¥" + String.format("%.2f", remaining) + "</b> remaining.</p>";
+            
+            if (foodPercentage > 0) {
+                insightsHTML += "<p>• <b>" + String.format("%.1f", foodPercentage) + 
+                        "%</b> of your spending is on food & dining this month.</p>";
+            }
+            
+            insightsHTML += "<p>• <span style='color:#c0392b;'><b>Alert:</b> Click 'Generate' in AI Insights for personalized recommendations based on your spending patterns.</span></p>";
+        }
+        insightsHTML += "</html>";
+        
+        JLabel insightsText = new JLabel(insightsHTML);
         insightsText.setFont(CONTENT_FONT);
         insightsText.setAlignmentX(Component.LEFT_ALIGNMENT);
         
@@ -640,6 +832,122 @@ public class BudgetView extends JFrame {
         
         panel.add(itemPanel);
         panel.add(Box.createVerticalStrut(10));
+    }
+    
+    /**
+     * Creates the budget insights panel using the BudgetInsightsPanel component
+     */
+    private void createBudgetInsightsPanel() {
+        // Create the budget insights panel
+        budgetInsightsPanel = new BudgetInsightsPanel();
+        
+        // Update it with current budget data
+        updateBudgetInsightsData();
+        
+        // Add to cards panel
+        cardsPanel.add(budgetInsightsPanel, AI_INSIGHTS_PANEL);
+    }
+    
+    /**
+     * Updates the budget insights panel with current budget data
+     */
+    private void updateBudgetInsightsData() {
+        if (budgetInsightsPanel != null) {
+            // Get transaction data
+            List<Transaction> transactions = TransactionManager.loadTransactions();
+            
+            // Calculate total spent amount
+            double totalSpent = 0.0;
+            Map<String, Double> categoryBreakdown = new HashMap<>();
+            
+            for (Transaction transaction : transactions) {
+                double amount = transaction.getAmount();
+                totalSpent += amount;
+                
+                // Update category breakdown
+                String category = transaction.getCategory();
+                categoryBreakdown.put(
+                    category, 
+                    categoryBreakdown.getOrDefault(category, 0.0) + amount
+                );
+            }
+            
+            // Get total budget (using sample value from createBudgetContent)
+            double totalBudget = 5000.00;
+            
+            // Update the budget insights panel with this data
+            budgetInsightsPanel.updateBudgetData(totalBudget, totalSpent, categoryBreakdown);
+        }
+    }
+    
+    /**
+     * Creates a simple budget settings panel
+     */
+    private void createBudgetSettingsPanel() {
+        JPanel settingsPanel = new JPanel();
+        settingsPanel.setLayout(new BorderLayout());
+        settingsPanel.setBackground(Color.WHITE);
+        settingsPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        
+        JLabel titleLabel = new JLabel("Budget Settings");
+        titleLabel.setFont(SUBHEADER_FONT);
+        titleLabel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        
+        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 20));
+        formPanel.setBackground(Color.WHITE);
+        
+        // Monthly budget setting
+        JLabel budgetLabel = new JLabel("Monthly Budget:");
+        budgetLabel.setFont(CONTENT_FONT);
+        
+        JTextField budgetField = new JTextField("5000.00");
+        budgetField.setFont(CONTENT_FONT);
+        
+        // Auto-categorization setting
+        JLabel categorizationLabel = new JLabel("Auto-categorize transactions:");
+        categorizationLabel.setFont(CONTENT_FONT);
+        
+        JCheckBox categorizationCheckbox = new JCheckBox();
+        categorizationCheckbox.setSelected(true);
+        categorizationCheckbox.setBackground(Color.WHITE);
+        
+        // Budget alerts setting
+        JLabel alertsLabel = new JLabel("Budget alerts:");
+        alertsLabel.setFont(CONTENT_FONT);
+        
+        JCheckBox alertsCheckbox = new JCheckBox();
+        alertsCheckbox.setSelected(true);
+        alertsCheckbox.setBackground(Color.WHITE);
+        
+        // Add components to form
+        formPanel.add(budgetLabel);
+        formPanel.add(budgetField);
+        formPanel.add(categorizationLabel);
+        formPanel.add(categorizationCheckbox);
+        formPanel.add(alertsLabel);
+        formPanel.add(alertsCheckbox);
+        
+        // Save button
+        JButton saveButton = new JButton("Save Settings");
+        saveButton.setBackground(PRIMARY_BLUE);
+        saveButton.setForeground(Color.WHITE);
+        saveButton.setFont(CONTENT_FONT);
+        saveButton.setFocusPainted(false);
+        saveButton.setOpaque(true);
+        saveButton.setBorderPainted(false);
+        
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
+        buttonPanel.add(saveButton);
+        
+        // Add components to main panel
+        settingsPanel.add(titleLabel, BorderLayout.NORTH);
+        settingsPanel.add(formPanel, BorderLayout.CENTER);
+        settingsPanel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        // Add to cards panel
+        cardsPanel.add(settingsPanel, BUDGET_SETTINGS_PANEL);
     }
     
     /**
