@@ -106,6 +106,20 @@ public class UserManager {
     }
     
     /**
+     * Sets the current user for testing purposes ONLY.
+     * This method bypasses normal authentication and should not be used in production code.
+     * It is package-private to limit its accessibility primarily to test classes within the same package.
+     * @param user The user to set as the current user.
+     */
+    static void setCurrentUserForTesting(User user) {
+        if (instance == null) {
+            // Ensure instance is created if not already
+            getInstance(); 
+        }
+        instance.currentUser = user;
+    }
+    
+    /**
      * Updates the current user's timeout setting
      * @param minutes The timeout in minutes
      * @return True if update is successful, false otherwise
