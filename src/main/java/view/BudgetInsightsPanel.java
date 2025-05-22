@@ -4,6 +4,7 @@ import model.BudgetInsights;
 import model.Transaction;
 import model.TransactionManager;
 import model.DeepSeekAPI;
+import view.AccountView; // Import AccountView for theme/budget settings
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -33,7 +34,7 @@ public class BudgetInsightsPanel extends JPanel {
     private StringBuilder insightsContent = new StringBuilder();
     
     // Budget data
-    private double totalBudget = 5000.00;
+    private double totalBudget;
     private double spentAmount = 0.0;
     private Map<String, Double> categoryBreakdown;
     
@@ -59,9 +60,12 @@ public class BudgetInsightsPanel extends JPanel {
     public BudgetInsightsPanel() {
         setLayout(new BorderLayout(10, 10));
         setBorder(new EmptyBorder(15, 15, 15, 15));
-        setBackground(Color.WHITE);
+        
+        // Set background based on CNY theme
+        setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         
         // Initialize data
+        this.totalBudget = AccountView.customBudget != null ? AccountView.customBudget : (AccountView.isCNYBudgetBoost ? 10000.00 : 5000.00);
         initializeData();
         
         // Initialize BudgetInsights with an empty string to use default key in DeepSeekAPI
@@ -70,6 +74,11 @@ public class BudgetInsightsPanel extends JPanel {
         createHeaderPanel();
         createInsightsPanel();
         createControlPanel();
+        
+        // Apply theme if needed
+        if (AccountView.isCNYTheme) {
+            applyTheme();
+        }
     }
     
     /**
@@ -122,12 +131,12 @@ public class BudgetInsightsPanel extends JPanel {
      */
     private void createHeaderPanel() {
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         headerPanel.setBorder(new EmptyBorder(0, 0, 10, 0));
         
         JLabel titleLabel = new JLabel("AI Budget Insights");
         titleLabel.setFont(HEADER_FONT);
-        titleLabel.setForeground(PRIMARY_BLUE);
+        titleLabel.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : PRIMARY_BLUE);
         
         headerPanel.add(titleLabel, BorderLayout.WEST);
         
@@ -140,12 +149,12 @@ public class BudgetInsightsPanel extends JPanel {
     private void createInsightsPanel() {
         // Create main content panel
         JPanel contentPanel = new JPanel(new BorderLayout(0, 15));
-        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         
         // Budget summary section
         JPanel summaryPanel = new JPanel();
         summaryPanel.setLayout(new BorderLayout());
-        summaryPanel.setBackground(LIGHT_BLUE);
+        summaryPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : LIGHT_BLUE);
         summaryPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)));
@@ -156,37 +165,37 @@ public class BudgetInsightsPanel extends JPanel {
             totalBudget, spentAmount, totalBudget - spentAmount
         ));
         budgetLabel.setFont(SUBHEADER_FONT);
-        budgetLabel.setForeground(PRIMARY_BLUE);
+        budgetLabel.setForeground(AccountView.isCNYTheme ? AccountView.CNY_RED : PRIMARY_BLUE);
         
         summaryPanel.add(budgetLabel, BorderLayout.CENTER);
         contentPanel.add(summaryPanel, BorderLayout.NORTH);
         
         // General insights section
         JPanel generalInsightsPanel = new JPanel(new BorderLayout());
-        generalInsightsPanel.setBackground(LIGHT_BLUE);
+        generalInsightsPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : LIGHT_BLUE);
         generalInsightsPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)));
         
         // Header for general insights
         JPanel generalHeaderPanel = new JPanel(new BorderLayout());
-        generalHeaderPanel.setBackground(LIGHT_BLUE);
+        generalHeaderPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : LIGHT_BLUE);
         JLabel generalLabel = new JLabel("Budget Insights");
         generalLabel.setFont(SUBHEADER_FONT);
-        generalLabel.setForeground(DARK_GRAY);
+        generalLabel.setForeground(AccountView.isCNYTheme ? AccountView.CNY_RED : DARK_GRAY);
         generalHeaderPanel.add(generalLabel, BorderLayout.WEST);
         
         // Generate button in the general insights header
         generateButton = new JButton("Generate");
-        generateButton.setBackground(PRIMARY_BLUE);
-        generateButton.setForeground(Color.WHITE);
+        generateButton.setBackground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : PRIMARY_BLUE);
+        generateButton.setForeground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         generateButton.setFont(new Font("Arial", Font.BOLD, 12));
         generateButton.setFocusPainted(false);
         generateButton.setBorderPainted(false);
         generateButton.addActionListener(e -> generateInsights());
         
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(LIGHT_BLUE);
+        buttonPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : LIGHT_BLUE);
         buttonPanel.add(generateButton);
         generalHeaderPanel.add(buttonPanel, BorderLayout.EAST);
         
@@ -514,12 +523,69 @@ public class BudgetInsightsPanel extends JPanel {
      * @param categoryBreakdown Map of categories to amounts
      */
     public void updateBudgetData(double totalBudget, double spentAmount, Map<String, Double> categoryBreakdown) {
-        this.totalBudget = totalBudget;
+        this.totalBudget = AccountView.customBudget != null ? AccountView.customBudget : (AccountView.isCNYBudgetBoost ? 10000.00 : 5000.00);
         this.spentAmount = spentAmount;
         this.categoryBreakdown = categoryBreakdown;
         
         // Update the budget summary
         updateBudgetSummary();
+        
+        // Apply theme if needed
+        if (AccountView.isCNYTheme) {
+            applyTheme();
+        }
+    }
+    
+    /**
+     * Apply CNY theme to all components in this panel
+     */
+    private void applyTheme() {
+        setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
+        
+        // Apply theme recursively to all components
+        applyThemeToComponent(this);
+        repaint();
+    }
+    
+    /**
+     * Apply theme recursively to components
+     */
+    private void applyThemeToComponent(Component comp) {
+        if (comp instanceof JPanel) {
+            JPanel panel = (JPanel) comp;
+            
+            // Skip the summary panel to keep its special styling
+            if (panel.getLayout() instanceof BorderLayout && 
+                panel.getBorder() != null && 
+                panel.getBackground().equals(LIGHT_BLUE)) {
+                panel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : LIGHT_BLUE);
+            } else {
+                panel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
+            }
+            
+            // Process child components
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (comp instanceof JButton) {
+            JButton button = (JButton) comp;
+            if (AccountView.isCNYTheme) {
+                button.setBackground(AccountView.CNY_YELLOW);
+                button.setForeground(AccountView.CNY_RED);
+            } else {
+                button.setBackground(PRIMARY_BLUE);
+                button.setForeground(Color.WHITE);
+            }
+        } else if (comp instanceof JLabel) {
+            JLabel label = (JLabel) comp;
+            
+            // Keep special styling for the budget summary label
+            if (label.getFont().equals(SUBHEADER_FONT)) {
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_RED : PRIMARY_BLUE);
+            } else {
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : Color.BLACK);
+            }
+        }
     }
     
     /**
