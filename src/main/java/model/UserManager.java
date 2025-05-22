@@ -1,8 +1,10 @@
 package model;
+
 import java.io.*;
 import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Map;
+
 /**
  * UserManager - Manages user authentication, registration and storage.
  * Uses a text file for persisting user data.
@@ -21,6 +23,7 @@ public class UserManager {
         users = new HashMap<>();
         loadUsers();
     }
+    
     /**
      * Gets the singleton instance of UserManager
      * @return The UserManager instance
@@ -31,6 +34,7 @@ public class UserManager {
         }
         return instance;
     }
+    
     /**
      * Registers a new user with the provided information
      * @param username The username
@@ -74,6 +78,7 @@ public class UserManager {
         if (user == null) {
             return false;
         }
+        
         // Decrypt and verify password
         String decryptedPassword = EncryptionService.decrypt(user.getEncryptedPassword());
         if (decryptedPassword == null || !decryptedPassword.equals(password)) {
@@ -99,6 +104,21 @@ public class UserManager {
     public void logout() {
         currentUser = null;
     }
+    
+    /**
+     * Sets the current user for testing purposes ONLY.
+     * This method bypasses normal authentication and should not be used in production code.
+     * It is package-private to limit its accessibility primarily to test classes within the same package.
+     * @param user The user to set as the current user.
+     */
+    static void setCurrentUserForTesting(User user) {
+        if (instance == null) {
+            // Ensure instance is created if not already
+            getInstance(); 
+        }
+        instance.currentUser = user;
+    }
+    
     /**
      * Updates the current user's timeout setting
      * @param minutes The timeout in minutes
