@@ -19,14 +19,14 @@ public class LoginView extends JFrame {
     private JPanel mainPanel;
     private JTextField usernameField;
     private JPasswordField passwordField;
-    
+
     // Colors and styling
     private final Color PRIMARY_BLUE = new Color(52, 152, 219);
     private final Color LIGHT_GRAY = new Color(245, 245, 245);
     private final Font HEADER_FONT = new Font("Arial", Font.BOLD, 22);
     private final Font LABEL_FONT = new Font("Arial", Font.PLAIN, 14);
     private final Font BUTTON_FONT = new Font("Arial", Font.BOLD, 14);
-    
+
     /**
      * Constructor for the LoginView
      */
@@ -35,7 +35,7 @@ public class LoginView extends JFrame {
         setSize(400, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
-        
+
         createLoginPanel();
         
         setLocationRelativeTo(null);
