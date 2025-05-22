@@ -60,6 +60,19 @@ public class AccountView extends JFrame {
     // User current user
     private User currentUser;
     
+    // Add static fields for CNY theme and budget boost at class level (after existing fields)
+    // CNY Theme Settings
+    public static boolean isCNYTheme = false;
+    public static boolean isCNYBudgetBoost = false;
+    public static final Color CNY_RED = new Color(220, 20, 60);
+    public static final Color CNY_YELLOW = new Color(255, 215, 0);
+    
+    // 用户自定义预算（null表示未自定义）
+    public static Double customBudget = null;
+    public static void setCustomBudget(Double value) { customBudget = value; }
+    public static Double getCustomBudget() { return customBudget; }
+    public static void clearCustomBudget() { customBudget = null; }
+    
     /**
      * Constructor for the AccountView
      */
@@ -1022,13 +1035,10 @@ public class AccountView extends JFrame {
         currencyCombo.setPreferredSize(new Dimension(200, 30));
         
         // Add action listener to immediately show currency changes in preview
-        currencyCombo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        currencyCombo.addActionListener(e -> {
                 String newCurrency = (String) currencyCombo.getSelectedItem();
                 // Preview panel to show example values in the selected currency
                 updateCurrencyPreview(newCurrency, currencyPanel);
-            }
         });
         
         currencyOptionsPanel.add(currencyCombo);
@@ -1052,83 +1062,54 @@ public class AccountView extends JFrame {
         currencyPanel.add(Box.createVerticalStrut(10));
         currencyPanel.add(currencyPreviewPanel); // Add the preview panel
         
-        // 3. Notification preferences
-        JPanel notificationPanel = new JPanel();
-        notificationPanel.setLayout(new BoxLayout(notificationPanel, BoxLayout.Y_AXIS));
-        notificationPanel.setBackground(Color.WHITE);
-        notificationPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        notificationPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        // 2. Chinese New Year Personalization Section
+        JPanel cnyPanel = new JPanel();
+        cnyPanel.setLayout(new BoxLayout(cnyPanel, BoxLayout.Y_AXIS));
+        cnyPanel.setBackground(Color.WHITE);
+        cnyPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cnyPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
         
-        JLabel notificationLabel = new JLabel("Notification Preferences");
-        notificationLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        notificationLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel cnyLabel = new JLabel("Chinese New Year Personalization");
+        cnyLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        cnyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JPanel notificationOptionsPanel = new JPanel(new GridLayout(4, 1));
-        notificationOptionsPanel.setBackground(Color.WHITE);
-        notificationOptionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Theme switch
+        JCheckBox themeSwitch = new JCheckBox("Red & Yellow Theme (All Pages)");
+        themeSwitch.setFont(CONTENT_FONT);
+        themeSwitch.setBackground(Color.WHITE);
+        themeSwitch.setSelected(isCNYTheme);
         
-        JCheckBox transactionAlertCheckbox = new JCheckBox("Transaction Alerts");
-        transactionAlertCheckbox.setFont(CONTENT_FONT);
-        transactionAlertCheckbox.setBackground(Color.WHITE);
-        transactionAlertCheckbox.setSelected(currentUser != null ? currentUser.isTransactionAlerts() : true);
+        // Budget boost switch
+        JCheckBox budgetSwitch = new JCheckBox("Boost Budget to 10,000 (Budget Page)");
+        budgetSwitch.setFont(CONTENT_FONT);
+        budgetSwitch.setBackground(Color.WHITE);
+        budgetSwitch.setSelected(isCNYBudgetBoost);
         
-        JCheckBox budgetAlertCheckbox = new JCheckBox("Budget Alerts");
-        budgetAlertCheckbox.setFont(CONTENT_FONT);
-        budgetAlertCheckbox.setBackground(Color.WHITE);
-        budgetAlertCheckbox.setSelected(currentUser != null ? currentUser.isBudgetAlerts() : true);
+        // Add listeners
+        themeSwitch.addActionListener(e -> {
+            isCNYTheme = themeSwitch.isSelected();
+            applyThemeToAllComponents(this);
+            JOptionPane.showMessageDialog(this, 
+                "Theme settings will be applied when you navigate between pages.", 
+                "Theme Updated", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
         
-        JCheckBox billReminderCheckbox = new JCheckBox("Bill Payment Reminders");
-        billReminderCheckbox.setFont(CONTENT_FONT);
-        billReminderCheckbox.setBackground(Color.WHITE);
-        billReminderCheckbox.setSelected(currentUser != null ? currentUser.isBillReminders() : true);
+        budgetSwitch.addActionListener(e -> {
+            isCNYBudgetBoost = budgetSwitch.isSelected();
+            JOptionPane.showMessageDialog(this, 
+                "Budget boost setting will take effect when you visit the Budget page.", 
+                "Budget Updated", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
         
-        JCheckBox financialTipsCheckbox = new JCheckBox("Financial Tips & Advice");
-        financialTipsCheckbox.setFont(CONTENT_FONT);
-        financialTipsCheckbox.setBackground(Color.WHITE);
-        financialTipsCheckbox.setSelected(currentUser != null ? currentUser.isFinancialTips() : true);
+        cnyPanel.add(cnyLabel);
+        cnyPanel.add(Box.createVerticalStrut(10));
+        cnyPanel.add(themeSwitch);
+        cnyPanel.add(Box.createVerticalStrut(5));
+        cnyPanel.add(budgetSwitch);
         
-        notificationOptionsPanel.add(transactionAlertCheckbox);
-        notificationOptionsPanel.add(budgetAlertCheckbox);
-        notificationOptionsPanel.add(billReminderCheckbox);
-        notificationOptionsPanel.add(financialTipsCheckbox);
-        
-        notificationPanel.add(notificationLabel);
-        notificationPanel.add(Box.createVerticalStrut(10));
-        notificationPanel.add(notificationOptionsPanel);
-        
-        // 4. Data privacy settings
-        JPanel dataPrivacyPanel = new JPanel();
-        dataPrivacyPanel.setLayout(new BoxLayout(dataPrivacyPanel, BoxLayout.Y_AXIS));
-        dataPrivacyPanel.setBackground(Color.WHITE);
-        dataPrivacyPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        dataPrivacyPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
-        
-        JLabel dataPrivacyLabel = new JLabel("Data Privacy");
-        dataPrivacyLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        dataPrivacyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JPanel dataPrivacyOptionsPanel = new JPanel(new GridLayout(2, 1));
-        dataPrivacyOptionsPanel.setBackground(Color.WHITE);
-        dataPrivacyOptionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JCheckBox dataAnalyticsCheckbox = new JCheckBox("Allow Data Analytics for Personalized Recommendations");
-        dataAnalyticsCheckbox.setFont(CONTENT_FONT);
-        dataAnalyticsCheckbox.setBackground(Color.WHITE);
-        dataAnalyticsCheckbox.setSelected(currentUser != null ? currentUser.isAllowDataAnalytics() : true);
-        
-        JCheckBox anonymousDataCheckbox = new JCheckBox("Share Anonymous Usage Data to Improve Services");
-        anonymousDataCheckbox.setFont(CONTENT_FONT);
-        anonymousDataCheckbox.setBackground(Color.WHITE);
-        anonymousDataCheckbox.setSelected(currentUser != null ? currentUser.isShareAnonymousData() : true);
-        
-        dataPrivacyOptionsPanel.add(dataAnalyticsCheckbox);
-        dataPrivacyOptionsPanel.add(anonymousDataCheckbox);
-        
-        dataPrivacyPanel.add(dataPrivacyLabel);
-        dataPrivacyPanel.add(Box.createVerticalStrut(10));
-        dataPrivacyPanel.add(dataPrivacyOptionsPanel);
-        
-        // Add save button
+        // Save button
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -1151,21 +1132,10 @@ public class AccountView extends JFrame {
                 String newCurrency = (String) currencyCombo.getSelectedItem();
                 currentUser.setCurrency(newCurrency);
                 
-                // Save notification preferences
-                currentUser.setTransactionAlerts(transactionAlertCheckbox.isSelected());
-                currentUser.setBudgetAlerts(budgetAlertCheckbox.isSelected());
-                currentUser.setBillReminders(billReminderCheckbox.isSelected());
-                currentUser.setFinancialTips(financialTipsCheckbox.isSelected());
-                
-                // Save data privacy preferences
-                currentUser.setAllowDataAnalytics(dataAnalyticsCheckbox.isSelected());
-                currentUser.setShareAnonymousData(anonymousDataCheckbox.isSelected());
-                
                 // Update the user in the UserManager
                 boolean saved = UserManager.getInstance().updateCurrentUser(currentUser);
                 
                 if (saved) {
-                    // Show success message
                     JOptionPane.showMessageDialog(this, 
                         "Preferences saved successfully!", 
                         "Success", 
@@ -1176,7 +1146,6 @@ public class AccountView extends JFrame {
                         updateCurrencyDisplay(newCurrency);
                     }
                 } else {
-                    // Show error message
                     JOptionPane.showMessageDialog(this, 
                         "Failed to save preferences. Please try again.", 
                         "Error", 
@@ -1195,8 +1164,7 @@ public class AccountView extends JFrame {
         // Add components to main content panel
         mainContent.add(preferencesHeaderLabel);
         mainContent.add(currencyPanel);
-        mainContent.add(notificationPanel);
-        mainContent.add(dataPrivacyPanel);
+        mainContent.add(cnyPanel);
         mainContent.add(buttonPanel);
         
         // Create a scroll pane for the main content
@@ -1392,6 +1360,43 @@ public class AccountView extends JFrame {
         
         // Show the dialog
         changePasswordDialog.setVisible(true);
+    }
+    
+    /**
+     * Applies CNY theme to all components in the frame
+     * @param frame The frame containing components to update
+     */
+    private void applyThemeToAllComponents(JFrame frame) {
+        applyThemeToComponent(frame.getContentPane());
+        frame.repaint();
+    }
+    
+    /**
+     * Recursively applies CNY theme to components
+     * @param component The component to update
+     */
+    private void applyThemeToComponent(Component component) {
+        if (component instanceof JPanel) {
+            JPanel panel = (JPanel) component;
+            panel.setBackground(isCNYTheme ? CNY_RED : Color.WHITE);
+            
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (component instanceof JButton) {
+            JButton button = (JButton) component;
+            if (isCNYTheme) {
+                button.setBackground(CNY_YELLOW);
+                button.setForeground(CNY_RED);
+            } else {
+                // Use constants for standard colors
+                button.setBackground(new Color(52, 152, 219)); // Similar to PRIMARY_BLUE
+                button.setForeground(Color.WHITE);
+            }
+        } else if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            label.setForeground(isCNYTheme ? CNY_YELLOW : Color.BLACK);
+        }
     }
     
     /**
