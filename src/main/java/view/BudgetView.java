@@ -17,6 +17,12 @@ import java.util.List;
 import java.util.Map;
 import model.User;
 import model.CurrencyManager;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.data.general.DefaultPieDataset;
+import view.AccountView; // Import AccountView for theme/budget settings
 
 /**
  * BudgetView - The budget management screen.
@@ -83,7 +89,7 @@ public class BudgetView extends JFrame {
         // Create card layout for different content panels
         cardLayout = new CardLayout();
         cardsPanel = new JPanel(cardLayout);
-        cardsPanel.setBackground(Color.WHITE);
+        cardsPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         
         // Add different content panels to the card layout
         createBudgetContent();
@@ -100,6 +106,11 @@ public class BudgetView extends JFrame {
         
         // Start session monitoring
         SessionManager.getInstance().startSession(this);
+        
+        // Apply CNY theme if enabled
+        if (AccountView.isCNYTheme) {
+            applyTheme();
+        }
     }
     
     /**
@@ -107,20 +118,20 @@ public class BudgetView extends JFrame {
      */
     private void createHeader() {
         JPanel headerPanel = new JPanel();
-        headerPanel.setBackground(PRIMARY_BLUE);
+        headerPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : PRIMARY_BLUE);
         headerPanel.setPreferredSize(new Dimension(getWidth(), 50));
         headerPanel.setLayout(new BorderLayout());
         
         JLabel titleLabel = new JLabel("Budget");
         titleLabel.setFont(HEADER_FONT);
-        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : Color.WHITE);
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
         titleLabel.setBorder(new EmptyBorder(10, 0, 10, 0));
         
         // Create logout button in the top-right corner
         JButton logoutButton = new JButton("Logout");
-        logoutButton.setBackground(new Color(231, 76, 60)); // Red color
-        logoutButton.setForeground(Color.WHITE);
+        logoutButton.setBackground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : new Color(231, 76, 60));
+        logoutButton.setForeground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         logoutButton.setFont(new Font("Arial", Font.BOLD, 12));
         logoutButton.setFocusPainted(false);
         logoutButton.setOpaque(true);
@@ -128,7 +139,7 @@ public class BudgetView extends JFrame {
         
         // Create a panel to hold the logout button with some margin
         JPanel logoutPanel = new JPanel();
-        logoutPanel.setBackground(PRIMARY_BLUE);
+        logoutPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : PRIMARY_BLUE);
         logoutPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         logoutPanel.add(logoutButton);
         
@@ -375,14 +386,14 @@ public class BudgetView extends JFrame {
      */
     private void createBudgetContent() {
         contentPanel = new JPanel();
-        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         contentPanel.setLayout(new BorderLayout());
         contentPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         
         // Create a container panel with vertical BoxLayout
         JPanel containerPanel = new JPanel();
         containerPanel.setLayout(new BoxLayout(containerPanel, BoxLayout.Y_AXIS));
-        containerPanel.setBackground(Color.WHITE);
+        containerPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         
         // Set fixed width for the container to prevent rendering issues
         containerPanel.setPreferredSize(new Dimension(700, 1200));
@@ -390,7 +401,7 @@ public class BudgetView extends JFrame {
         // Budget details panel
         JPanel budgetDetails = new JPanel();
         budgetDetails.setLayout(new BoxLayout(budgetDetails, BoxLayout.Y_AXIS));
-        budgetDetails.setBackground(Color.WHITE);
+        budgetDetails.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         budgetDetails.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         // AI Insights Panel - Add at the top
@@ -425,13 +436,14 @@ public class BudgetView extends JFrame {
             categorySpending.put("Other", 130.0);
         }
         
-        // Budget values - Use same totalBudget as in BudgetInsightsPanel
-        double totalBudget = 5000.00;
+        // Budget values - Use custom budget if set, otherwise use CNY boost or default
+        double totalBudget = AccountView.customBudget != null ? AccountView.customBudget : (AccountView.isCNYBudgetBoost ? 10000.00 : 5000.00);
         double remaining = totalBudget - totalSpent;
         
         // Budget summary section
         JLabel summaryLabel = new JLabel("Budget Summary");
         summaryLabel.setFont(SUBHEADER_FONT);
+        summaryLabel.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : DARK_GRAY);
         summaryLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JPanel summaryPanel = new JPanel();
@@ -506,6 +518,62 @@ public class BudgetView extends JFrame {
             addCategoryItem(categoriesPanel, category, budget, spent, color);
         }
         
+        // 新增: 预算分布饼图部分
+        JLabel pieChartLabel = new JLabel("Budget Distribution");
+        pieChartLabel.setFont(SUBHEADER_FONT);
+        pieChartLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // 创建饼图数据集
+        DefaultPieDataset pieDataset = new DefaultPieDataset();
+        
+        // 添加每个消费类别的数据到饼图
+        for (Map.Entry<String, Double> entry : categorySpending.entrySet()) {
+            String category = entry.getKey();
+            double spent = entry.getValue();
+            pieDataset.setValue(category, spent);
+        }
+        
+        // 添加剩余预算到饼图
+        pieDataset.setValue("Remaining Budget", remaining);
+        
+        // 创建饼图
+        JFreeChart pieChart = ChartFactory.createPieChart(
+            "Budget Distribution", // 标题
+            pieDataset,            // 数据集
+            true,                  // 包含图例
+            true,                  // 包含提示
+            false                  // 不包含URL
+        );
+        
+        // 自定义饼图外观
+        PiePlot plot = (PiePlot) pieChart.getPlot();
+        
+        // 设置饼图每个部分的颜色
+        for (Map.Entry<String, Double> entry : categorySpending.entrySet()) {
+            String category = entry.getKey();
+            plot.setSectionPaint(category, categoryColors.getOrDefault(category, new Color(149, 165, 166)));
+        }
+        
+        // 设置剩余预算的颜色
+        plot.setSectionPaint("Remaining Budget", new Color(155, 89, 182)); // 紫色，与卡片保持一致
+        
+        // 创建图表面板并设置大小
+        ChartPanel pieChartPanel = new ChartPanel(pieChart);
+        pieChartPanel.setPreferredSize(new Dimension(400, 300));
+        pieChartPanel.setMinimumSize(new Dimension(300, 200));
+        pieChartPanel.setMaximumSize(new Dimension(700, 400));
+        pieChartPanel.setBackground(Color.WHITE);
+        pieChartPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // 包装饼图以控制其大小和外观
+        JPanel pieChartContainer = new JPanel();
+        pieChartContainer.setLayout(new BorderLayout());
+        pieChartContainer.setBackground(Color.WHITE);
+        pieChartContainer.add(pieChartPanel, BorderLayout.CENTER);
+        pieChartContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pieChartContainer.setBorder(new EmptyBorder(10, 0, 30, 0));
+        pieChartContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
+        
         // Recent transactions section
         JLabel transactionsLabel = new JLabel("Recent Transactions");
         transactionsLabel.setFont(SUBHEADER_FONT);
@@ -557,6 +625,11 @@ public class BudgetView extends JFrame {
         budgetDetails.add(categoriesLabel);
         budgetDetails.add(Box.createVerticalStrut(10));
         budgetDetails.add(categoriesPanel);
+        budgetDetails.add(Box.createVerticalStrut(20));
+        // 添加饼图组件
+        budgetDetails.add(pieChartLabel);
+        budgetDetails.add(Box.createVerticalStrut(10));
+        budgetDetails.add(pieChartContainer);
         budgetDetails.add(Box.createVerticalStrut(20));
         budgetDetails.add(transactionsLabel);
         budgetDetails.add(Box.createVerticalStrut(10));
@@ -872,8 +945,8 @@ public class BudgetView extends JFrame {
                 );
             }
             
-            // Get total budget (using sample value from createBudgetContent)
-            double totalBudget = 5000.00;
+            // Get total budget - use custom budget if set, otherwise use CNY boost or default
+            double totalBudget = AccountView.customBudget != null ? AccountView.customBudget : (AccountView.isCNYBudgetBoost ? 10000.00 : 5000.00);
             
             // Update the budget insights panel with this data
             budgetInsightsPanel.updateBudgetData(totalBudget, totalSpent, categoryBreakdown);
@@ -886,22 +959,27 @@ public class BudgetView extends JFrame {
     private void createBudgetSettingsPanel() {
         JPanel settingsPanel = new JPanel();
         settingsPanel.setLayout(new BorderLayout());
-        settingsPanel.setBackground(Color.WHITE);
+        settingsPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         settingsPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         
         JLabel titleLabel = new JLabel("Budget Settings");
         titleLabel.setFont(SUBHEADER_FONT);
+        titleLabel.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : DARK_GRAY);
         titleLabel.setBorder(new EmptyBorder(0, 0, 20, 0));
         
         JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 20));
-        formPanel.setBackground(Color.WHITE);
+        formPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         
         // Monthly budget setting
         JLabel budgetLabel = new JLabel("Monthly Budget:");
         budgetLabel.setFont(CONTENT_FONT);
+        budgetLabel.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : DARK_GRAY);
         
-        JTextField budgetField = new JTextField("5000.00");
+        // Use custom budget if set, otherwise use CNY boost or default
+        String budgetValue = AccountView.customBudget != null ? String.format("%.2f", AccountView.customBudget) : (AccountView.isCNYBudgetBoost ? "10000.00" : "5000.00");
+        JTextField budgetField = new JTextField(budgetValue);
         budgetField.setFont(CONTENT_FONT);
+        budgetField.setEditable(true);
         
         // Auto-categorization setting
         JLabel categorizationLabel = new JLabel("Auto-categorize transactions:");
@@ -937,9 +1015,25 @@ public class BudgetView extends JFrame {
         saveButton.setBorderPainted(false);
         
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
         buttonPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
         buttonPanel.add(saveButton);
+        
+        // Add action listener for save button
+        saveButton.addActionListener(e -> {
+            String text = budgetField.getText().trim();
+            try {
+                double value = Double.parseDouble(text);
+                if (value <= 0) throw new NumberFormatException();
+                AccountView.setCustomBudget(value);
+                JOptionPane.showMessageDialog(this, "Custom budget saved!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                // 刷新预算显示
+                createBudgetContent();
+                createBudgetInsightsPanel();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Please enter a valid positive number for budget.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
         
         // Add components to main panel
         settingsPanel.add(titleLabel, BorderLayout.NORTH);
@@ -948,6 +1042,56 @@ public class BudgetView extends JFrame {
         
         // Add to cards panel
         cardsPanel.add(settingsPanel, BUDGET_SETTINGS_PANEL);
+    }
+    
+    /**
+     * Applies CNY theme to components
+     */
+    private void applyTheme() {
+        // Update main panels
+        if (contentPanel != null) {
+            contentPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
+        }
+        if (cardsPanel != null) {
+            cardsPanel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
+        }
+        
+        // Update all components recursively
+        applyThemeToComponent(this.getContentPane());
+        
+        repaint();
+    }
+    
+    /**
+     * Recursively applies CNY theme to components
+     */
+    private void applyThemeToComponent(Component component) {
+        if (component instanceof JPanel) {
+            JPanel panel = (JPanel) component;
+            panel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
+            
+            // Apply to all child components
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (component instanceof JButton) {
+            JButton button = (JButton) component;
+            if (AccountView.isCNYTheme) {
+                button.setBackground(AccountView.CNY_YELLOW);
+                button.setForeground(AccountView.CNY_RED);
+            } else {
+                // Standard colors
+                if (button.getText().equals("Logout")) {
+                    button.setBackground(new Color(231, 76, 60));
+                } else {
+                    button.setBackground(PRIMARY_BLUE);
+                }
+                button.setForeground(Color.WHITE);
+            }
+        } else if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : DARK_GRAY);
+        }
     }
     
     /**

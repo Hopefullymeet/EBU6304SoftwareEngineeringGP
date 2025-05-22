@@ -40,6 +40,9 @@ public class LoginView extends JFrame {
         
         setLocationRelativeTo(null);
         setVisible(true);
+        
+        // 应用红黄主题
+        AccountView.applyThemeToAllComponents(this);
     }
     
     /**
