@@ -105,6 +105,9 @@ public class BillingView extends JFrame {
         // Start session monitoring
         SessionManager.getInstance().startSession(this);
         
+        // 应用红黄主题
+        AccountView.applyThemeToAllComponents(this);
+        
         refreshTransactionsDisplay();
     }
     
@@ -523,7 +526,7 @@ public class BillingView extends JFrame {
         JTextField descField = new JTextField(20);
         
         // Amount - Clarify meaning
-        JLabel amountLabel = new JLabel("Expense Amount ($):");
+        JLabel amountLabel = new JLabel("Expense Amount (￥):");
         JTextField amountField = new JTextField(10);
         
         // Category
