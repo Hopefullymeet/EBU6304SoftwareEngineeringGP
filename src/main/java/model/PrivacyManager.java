@@ -73,12 +73,12 @@ public class PrivacyManager {
         if (user != null) {
             privacySettings.put(DATA_ANALYTICS, user.isAllowDataAnalytics());
             privacySettings.put(ANONYMOUS_DATA, user.isShareAnonymousData());
-            privacySettings.put(PERSONAL_INFO_SHARING, user.isAllowPersonalInfoSharing());
-            privacySettings.put(LOCATION_TRACKING, user.isAllowLocationTracking());
-            privacySettings.put(EMAIL_NOTIFICATIONS, user.isAllowEmailNotifications());
-            privacySettings.put(PUSH_NOTIFICATIONS, user.isAllowPushNotifications());
-            privacySettings.put(THIRD_PARTY_ADS, user.isAllowThirdPartyAds());
-            privacySettings.put(DATA_RETENTION, user.isAllowDataRetention());
+            privacySettings.put(PERSONAL_INFO_SHARING, user.isPersonalInfoSharing());
+            privacySettings.put(LOCATION_TRACKING, user.isLocationTracking());
+            privacySettings.put(EMAIL_NOTIFICATIONS, user.isEmailNotifications());
+            privacySettings.put(PUSH_NOTIFICATIONS, user.isPushNotifications());
+            privacySettings.put(THIRD_PARTY_ADS, user.isThirdPartyAds());
+            privacySettings.put(DATA_RETENTION, user.isDataRetention());
         }
     }
 
