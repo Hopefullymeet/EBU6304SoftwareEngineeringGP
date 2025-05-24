@@ -7,6 +7,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import model.SessionManager;
+import model.UserManager;
 
 /**
  * HelpCenterView - A Java Swing implementation of a Help Center interface.
@@ -71,6 +73,14 @@ public class HelpCenterView extends JFrame {
         
         setLocationRelativeTo(null);
         setVisible(true);
+        
+        // Start session monitoring
+        SessionManager.getInstance().startSession(this);
+        
+        // 应用红黄主题
+        if (AccountView.isCNYTheme) {
+            applyTheme();
+        }
     }
     
     /**
@@ -78,6 +88,7 @@ public class HelpCenterView extends JFrame {
      */
     private void createHeader() {
         JPanel headerPanel = new JPanel();
+        headerPanel.setName("headerPanel");
         headerPanel.setBackground(PRIMARY_BLUE);
         headerPanel.setPreferredSize(new Dimension(getWidth(), 50));
         headerPanel.setLayout(new BorderLayout());
@@ -107,6 +118,12 @@ public class HelpCenterView extends JFrame {
         logoutButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                // Stop session monitoring
+                SessionManager.getInstance().stopSession();
+                
+                // Log out the user
+                UserManager.getInstance().logout();
+                
                 dispose(); // Close current window
                 new LoginView(); // Return to login screen
             }
@@ -374,6 +391,133 @@ public class HelpCenterView extends JFrame {
     }
     
     /**
+     * Adds a FAQ item to the FAQ panel
+     */
+    private void addFAQItem(String question) {
+        JPanel faqItemPanel = new JPanel();
+        faqItemPanel.setLayout(new BorderLayout());
+        faqItemPanel.setBackground(Color.WHITE);
+        faqItemPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, LIGHT_GRAY),
+                BorderFactory.createEmptyBorder(15, 0, 15, 0)
+        ));
+        faqItemPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        
+        JLabel questionLabel = new JLabel(question);
+        questionLabel.setFont(CONTENT_FONT);
+        
+        JLabel arrowLabel = new JLabel("›");
+        arrowLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        arrowLabel.setForeground(DARK_GRAY);
+        
+        faqItemPanel.add(questionLabel, BorderLayout.WEST);
+        faqItemPanel.add(arrowLabel, BorderLayout.EAST);
+        
+        // Make the panel clickable
+        faqItemPanel.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent evt) {
+                faqItemPanel.setBackground(LIGHT_GRAY);
+            }
+            
+            public void mouseExited(MouseEvent evt) {
+                faqItemPanel.setBackground(Color.WHITE);
+            }
+            
+            public void mouseClicked(MouseEvent evt) {
+                // Show a detailed answer for the question
+                showFAQAnswer(question);
+            }
+        });
+        
+        faqPanel.add(faqItemPanel);
+    }
+    
+    /**
+     * Shows a detailed answer for the FAQ question
+     * @param question The FAQ question to show answer for
+     */
+    private void showFAQAnswer(String question) {
+        String answer = "";
+        String title = "FAQ Answer";
+        
+        // Provide specific answers for each question
+        if (question.equals("How do I connect my bank accounts?")) {
+            answer = "To connect your bank accounts:\n\n"
+                    + "1. Navigate to the Accounts Manager section by clicking on 'Account' in the sidebar\n"
+                    + "2. Click the '+ Register New User' button\n"
+                    + "3. In your account settings, select 'Link Accounts'\n"
+                    + "4. Choose your bank from the list of supported financial institutions\n"
+                    + "5. Enter your banking credentials when prompted\n"
+                    + "6. Confirm the accounts you want to connect\n\n"
+                    + "Note: We use bank-level security encryption to protect your credentials. "
+                    + "Your banking login information is never stored on our servers.";
+        } 
+        else if (question.equals("How does the AI analyze my spending habits?")) {
+            answer = "Our AI-powered spending analysis works by:\n\n"
+                    + "1. Securely accessing your transaction history from connected accounts\n"
+                    + "2. Categorizing your transactions automatically using machine learning\n"
+                    + "3. Identifying patterns in your spending over time\n"
+                    + "4. Comparing your habits to your set budget categories\n"
+                    + "5. Generating personalized insights and recommendations\n\n"
+                    + "The AI continuously learns from your spending patterns to provide more "
+                    + "accurate categorization and better recommendations over time. "
+                    + "You can view these insights in the Budget and Financial Advisor sections.";
+        } 
+        else if (question.equals("Is my financial data secure?")) {
+            answer = "Yes, your financial data is secure with our multi-layered security approach:\n\n"
+                    + "• Bank-level 256-bit encryption for all data transfers\n"
+                    + "• We never store your banking credentials on our servers\n"
+                    + "• Regular security audits and penetration testing\n"
+                    + "• Two-factor authentication for account access\n"
+                    + "• Automatic logout after periods of inactivity\n"
+                    + "• Compliance with financial industry security standards\n\n"
+                    + "We take the security and privacy of your financial information very seriously. "
+                    + "Our systems are designed to protect your data at every level.";
+        } 
+        else if (question.equals("How can I set up budget alerts?")) {
+            answer = "To set up budget alerts:\n\n"
+                    + "1. Go to the Budget section from the sidebar\n"
+                    + "2. Click on 'Budget Settings' in the sub-menu\n"
+                    + "3. Scroll to the 'Budget Alerts' section\n"
+                    + "4. Toggle the 'Budget alerts' switch to ON\n"
+                    + "5. Customize your alert preferences:\n"
+                    + "   - Set threshold percentages (e.g., alert at 80% of budget)\n"
+                    + "   - Choose notification methods (app, email, etc.)\n"
+                    + "   - Set category-specific alerts if desired\n"
+                    + "6. Click 'Save Settings' to apply your changes\n\n"
+                    + "You'll now receive timely notifications when you approach or exceed your budget limits.";
+        } 
+        else {
+            // Generic response for any other questions
+            answer = "Information about this topic is not available at the moment. "
+                    + "Please contact our support team for more assistance.";
+        }
+        
+        // Use a JOptionPane with a scrollable text area for better readability
+        JTextArea textArea = new JTextArea(answer);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setEditable(false);
+        textArea.setBackground(new Color(250, 250, 250));
+        textArea.setFont(CONTENT_FONT);
+        
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(450, 300));
+        
+        // Set default button text to English
+        UIManager.put("OptionPane.okButtonText", "OK");
+        UIManager.put("OptionPane.cancelButtonText", "Cancel");
+        
+        // Show the answer dialog
+        JOptionPane.showMessageDialog(
+            this,
+            scrollPane,
+            title,
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+    
+    /**
      * Creates the Live Support content panel
      */
     private void createLiveSupportPanel() {
@@ -556,48 +700,6 @@ public class HelpCenterView extends JFrame {
     }
     
     /**
-     * Adds a FAQ item to the FAQ panel
-     */
-    private void addFAQItem(String question) {
-        JPanel faqItemPanel = new JPanel();
-        faqItemPanel.setLayout(new BorderLayout());
-        faqItemPanel.setBackground(Color.WHITE);
-        faqItemPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, LIGHT_GRAY),
-                BorderFactory.createEmptyBorder(15, 0, 15, 0)
-        ));
-        faqItemPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-        
-        JLabel questionLabel = new JLabel(question);
-        questionLabel.setFont(CONTENT_FONT);
-        
-        JLabel arrowLabel = new JLabel("›");
-        arrowLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        arrowLabel.setForeground(DARK_GRAY);
-        
-        faqItemPanel.add(questionLabel, BorderLayout.WEST);
-        faqItemPanel.add(arrowLabel, BorderLayout.EAST);
-        
-        // Make the panel clickable
-        faqItemPanel.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent evt) {
-                faqItemPanel.setBackground(LIGHT_GRAY);
-            }
-            
-            public void mouseExited(MouseEvent evt) {
-                faqItemPanel.setBackground(Color.WHITE);
-            }
-            
-            public void mouseClicked(MouseEvent evt) {
-                // Here you would handle showing the answer to the question
-                JOptionPane.showMessageDialog(null, "This would show the answer to: " + question);
-            }
-        });
-        
-        faqPanel.add(faqItemPanel);
-    }
-    
-    /**
      * Main method to test the HelpCenterView
      */
     public static void main(String[] args) {
@@ -614,5 +716,60 @@ public class HelpCenterView extends JFrame {
                 new HelpCenterView();
             }
         });
+    }
+
+    /**
+     * Recursively applies theme to components
+     * @param component The component to update
+     */
+    private void applyThemeToComponent(Component component) {
+        if (component instanceof JPanel) {
+            JPanel panel = (JPanel) component;
+            
+            // 特殊处理顶部面板
+            if (panel.getName() != null && panel.getName().equals("headerPanel")) {
+                panel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : PRIMARY_BLUE);
+            } else {
+                panel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
+            }
+            
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (component instanceof JButton) {
+            JButton button = (JButton) component;
+            if (AccountView.isCNYTheme) {
+                button.setBackground(AccountView.CNY_YELLOW);
+                button.setForeground(AccountView.CNY_RED);
+            } else {
+                // 根据按钮文本区分不同按钮
+                if (button.getText().equals("Logout")) {
+                    button.setBackground(new Color(231, 76, 60)); // 红色
+                    button.setForeground(Color.WHITE);
+                } else {
+                    button.setBackground(PRIMARY_BLUE);
+                    button.setForeground(Color.WHITE);
+                }
+            }
+        } else if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            
+            // 根据字体大小或样式来区分不同标签
+            if (label.getFont().getSize() >= 20) { // 大标题或头部标签
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : Color.WHITE);
+            } else if (label.getFont().getStyle() == Font.BOLD) { // 粗体标签
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : DARK_GRAY);
+            } else {
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : Color.BLACK);
+            }
+        }
+    }
+    
+    /**
+     * 应用当前主题到整个界面
+     */
+    private void applyTheme() {
+        applyThemeToComponent(this.getContentPane());
+        repaint();
     }
 } 
