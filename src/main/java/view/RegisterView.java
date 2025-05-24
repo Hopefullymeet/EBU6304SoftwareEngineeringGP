@@ -1,7 +1,12 @@
 package view;
 
+import model.PasswordStrengthChecker;
+import model.UserManager;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -19,9 +24,19 @@ public class RegisterView extends JFrame {
     private JPasswordField confirmPasswordField;
     private JTextField emailField;
     
+    // Password strength components
+    private JPanel passwordStrengthPanel;
+    private JProgressBar strengthBar;
+    private JLabel strengthLabel;
+    private JTextArea requirementsTextArea;
+    
     // Colors and styling
     private final Color PRIMARY_BLUE = new Color(52, 152, 219);
     private final Color LIGHT_GRAY = new Color(245, 245, 245);
+    private final Color WEAK_RED = new Color(231, 76, 60);
+    private final Color FAIR_ORANGE = new Color(230, 126, 34);
+    private final Color GOOD_YELLOW = new Color(241, 196, 15);
+    private final Color STRONG_GREEN = new Color(46, 204, 113);
     private final Font HEADER_FONT = new Font("Arial", Font.BOLD, 22);
     private final Font LABEL_FONT = new Font("Arial", Font.PLAIN, 14);
     private final Font BUTTON_FONT = new Font("Arial", Font.BOLD, 14);
@@ -31,7 +46,7 @@ public class RegisterView extends JFrame {
      */
     public RegisterView() {
         setTitle("Finance Tracker - Register");
-        setSize(450, 600);
+        setSize(450, 700); // Increased height for password strength indicator
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         
@@ -39,6 +54,9 @@ public class RegisterView extends JFrame {
         
         setLocationRelativeTo(null);
         setVisible(true);
+        
+        // 应用红黄主题
+        AccountView.applyThemeToAllComponents(this);
     }
     
     /**
@@ -80,6 +98,27 @@ public class RegisterView extends JFrame {
         passwordPanel.add(passwordField, BorderLayout.CENTER);
         confirmPasswordPanel.add(confirmPasswordField, BorderLayout.CENTER);
         
+        // Create password strength indicator panel
+        createPasswordStrengthPanel();
+        
+        // Add password strength evaluation listener
+        passwordField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updatePasswordStrength();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updatePasswordStrength();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updatePasswordStrength();
+            }
+        });
+        
         // Register button
         JButton registerButton = new JButton("Register");
         registerButton.setFont(BUTTON_FONT);
@@ -120,38 +159,7 @@ public class RegisterView extends JFrame {
         registerButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String username = usernameField.getText();
-                String email = emailField.getText();
-                String password = new String(passwordField.getPassword());
-                String confirmPassword = new String(confirmPasswordField.getPassword());
-                
-                // Validate inputs
-                if (username.trim().isEmpty() || email.trim().isEmpty() || 
-                    password.trim().isEmpty() || confirmPassword.trim().isEmpty()) {
-                    JOptionPane.showMessageDialog(
-                        RegisterView.this,
-                        "All fields are required",
-                        "Registration Error",
-                        JOptionPane.ERROR_MESSAGE
-                    );
-                } else if (!password.equals(confirmPassword)) {
-                    JOptionPane.showMessageDialog(
-                        RegisterView.this,
-                        "Passwords do not match",
-                        "Registration Error",
-                        JOptionPane.ERROR_MESSAGE
-                    );
-                } else {
-                    // For demonstration, registration is always successful
-                    JOptionPane.showMessageDialog(
-                        RegisterView.this,
-                        "Registration successful! Please login.",
-                        "Registration Success",
-                        JOptionPane.INFORMATION_MESSAGE
-                    );
-                    dispose(); // Close registration window
-                    new LoginView(); // Open login view
-                }
+                register();
             }
         });
         
@@ -163,6 +171,8 @@ public class RegisterView extends JFrame {
         mainPanel.add(emailPanel);
         mainPanel.add(Box.createVerticalStrut(15));
         mainPanel.add(passwordPanel);
+        mainPanel.add(Box.createVerticalStrut(5));
+        mainPanel.add(passwordStrengthPanel);
         mainPanel.add(Box.createVerticalStrut(15));
         mainPanel.add(confirmPasswordPanel);
         mainPanel.add(Box.createVerticalStrut(30));
@@ -170,7 +180,12 @@ public class RegisterView extends JFrame {
         mainPanel.add(Box.createVerticalStrut(20));
         mainPanel.add(loginPanel);
         
-        add(mainPanel, BorderLayout.CENTER);
+        // Add scrolling for the form
+        JScrollPane scrollPane = new JScrollPane(mainPanel);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        
+        add(scrollPane, BorderLayout.CENTER);
     }
     
     /**
@@ -194,6 +209,163 @@ public class RegisterView extends JFrame {
         panel.add(labelPanel, BorderLayout.NORTH);
         
         return panel;
+    }
+    
+    /**
+     * Creates the password strength indicator panel
+     */
+    private void createPasswordStrengthPanel() {
+        passwordStrengthPanel = new JPanel();
+        passwordStrengthPanel.setLayout(new BoxLayout(passwordStrengthPanel, BoxLayout.Y_AXIS));
+        passwordStrengthPanel.setBackground(Color.WHITE);
+        passwordStrengthPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        passwordStrengthPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        
+        // Progress bar for password strength
+        strengthBar = new JProgressBar(0, 100);
+        strengthBar.setValue(0);
+        strengthBar.setStringPainted(false);
+        strengthBar.setBackground(Color.WHITE);
+        strengthBar.setForeground(WEAK_RED);
+        strengthBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 10));
+        
+        // Label for strength text
+        strengthLabel = new JLabel("Password Strength: Weak");
+        strengthLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        strengthLabel.setForeground(WEAK_RED);
+        strengthLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        // Text area for password requirements
+        requirementsTextArea = new JTextArea();
+        requirementsTextArea.setText("Password must:\n- Be at least 8 characters long\n- Contain at least one letter\n- Contain at least one number\n- Contain at least one special character");
+        requirementsTextArea.setFont(new Font("Arial", Font.PLAIN, 12));
+        requirementsTextArea.setEditable(false);
+        requirementsTextArea.setBackground(new Color(250, 250, 250));
+        requirementsTextArea.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        requirementsTextArea.setAlignmentX(Component.CENTER_ALIGNMENT);
+        requirementsTextArea.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        
+        // Add components to panel
+        passwordStrengthPanel.add(strengthBar);
+        passwordStrengthPanel.add(Box.createVerticalStrut(5));
+        passwordStrengthPanel.add(strengthLabel);
+        passwordStrengthPanel.add(Box.createVerticalStrut(10));
+        passwordStrengthPanel.add(requirementsTextArea);
+    }
+    
+    /**
+     * Updates the password strength indicator based on the current password
+     */
+    private void updatePasswordStrength() {
+        String password = new String(passwordField.getPassword());
+        int strength = PasswordStrengthChecker.checkStrength(password);
+        String strengthText = PasswordStrengthChecker.getStrengthText(strength);
+        
+        // Update UI based on strength
+        switch (strength) {
+            case PasswordStrengthChecker.STRENGTH_WEAK:
+                strengthBar.setValue(20);
+                strengthBar.setForeground(WEAK_RED);
+                strengthLabel.setText("Password Strength: " + strengthText);
+                strengthLabel.setForeground(WEAK_RED);
+                break;
+            case PasswordStrengthChecker.STRENGTH_FAIR:
+                strengthBar.setValue(40);
+                strengthBar.setForeground(FAIR_ORANGE);
+                strengthLabel.setText("Password Strength: " + strengthText);
+                strengthLabel.setForeground(FAIR_ORANGE);
+                break;
+            case PasswordStrengthChecker.STRENGTH_GOOD:
+                strengthBar.setValue(60);
+                strengthBar.setForeground(GOOD_YELLOW);
+                strengthLabel.setText("Password Strength: " + strengthText);
+                strengthLabel.setForeground(GOOD_YELLOW);
+                break;
+            case PasswordStrengthChecker.STRENGTH_STRONG:
+                strengthBar.setValue(80);
+                strengthBar.setForeground(STRONG_GREEN);
+                strengthLabel.setText("Password Strength: " + strengthText);
+                strengthLabel.setForeground(STRONG_GREEN);
+                break;
+            case PasswordStrengthChecker.STRENGTH_VERY_STRONG:
+                strengthBar.setValue(100);
+                strengthBar.setForeground(STRONG_GREEN);
+                strengthLabel.setText("Password Strength: " + strengthText);
+                strengthLabel.setForeground(STRONG_GREEN);
+                break;
+        }
+        
+        // Show any failed requirements
+        if (!PasswordStrengthChecker.meetsMinimumRequirements(password)) {
+            requirementsTextArea.setText(PasswordStrengthChecker.getFailedRequirements(password));
+        } else {
+            requirementsTextArea.setText("All requirements met. Your password is " + strengthText.toLowerCase() + ".");
+        }
+    }
+    
+    /**
+     * Handles the registration process
+     */
+    private void register() {
+        String username = usernameField.getText();
+        String email = emailField.getText();
+        String password = new String(passwordField.getPassword());
+        String confirmPassword = new String(confirmPasswordField.getPassword());
+        
+        // Validate inputs
+        if (username.trim().isEmpty() || email.trim().isEmpty() || 
+            password.trim().isEmpty() || confirmPassword.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                RegisterView.this,
+                "All fields are required",
+                "Registration Error",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+        
+        if (!password.equals(confirmPassword)) {
+            JOptionPane.showMessageDialog(
+                RegisterView.this,
+                "Passwords do not match",
+                "Registration Error",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+        
+        if (!PasswordStrengthChecker.meetsMinimumRequirements(password)) {
+            JOptionPane.showMessageDialog(
+                RegisterView.this,
+                "Password does not meet minimum requirements:\n" + 
+                PasswordStrengthChecker.getFailedRequirements(password),
+                "Registration Error",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+        
+        // Attempt to register the user
+        UserManager userManager = UserManager.getInstance();
+        if (userManager.registerUser(username, password, email)) {
+            JOptionPane.showMessageDialog(
+                RegisterView.this,
+                "Registration successful! Please login.",
+                "Registration Success",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            dispose(); // Close registration window
+            new LoginView(); // Open login view
+        } else {
+            JOptionPane.showMessageDialog(
+                RegisterView.this,
+                "Username already exists or registration failed.",
+                "Registration Error",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
     
     /**
