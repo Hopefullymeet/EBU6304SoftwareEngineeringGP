@@ -54,6 +54,13 @@ public class CurrencyManager {
     }
     
     /**
+     * Resets the singleton instance for testing purposes
+     */
+    public static void resetInstance() {
+        instance = null;
+    }
+    
+    /**
      * Converts an amount from one currency to another
      * @param amount The amount to convert
      * @param fromCurrency The source currency

@@ -235,4 +235,12 @@ public class UserManager {
             return false;
         }
     }
+    
+    /**
+     * Gets all registered users
+     * @return A map of username to User objects
+     */
+    public Map<String, User> getAllUsers() {
+        return users;
+    }
 } 
