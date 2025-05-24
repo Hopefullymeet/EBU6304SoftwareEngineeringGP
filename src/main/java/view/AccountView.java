@@ -8,6 +8,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
 
 /**
  * AccountView - The account management screen.
@@ -59,6 +62,19 @@ public class AccountView extends JFrame {
     
     // User current user
     private User currentUser;
+    
+    // Add static fields for CNY theme and budget boost at class level (after existing fields)
+    // CNY Theme Settings
+    public static boolean isCNYTheme = false;
+    public static boolean isCNYBudgetBoost = false;
+    public static final Color CNY_RED = new Color(220, 20, 60);
+    public static final Color CNY_YELLOW = new Color(255, 215, 0);
+    
+    // 用户自定义预算（null表示未自定义）
+    public static Double customBudget = null;
+    public static void setCustomBudget(Double value) { customBudget = value; }
+    public static Double getCustomBudget() { return customBudget; }
+    public static void clearCustomBudget() { customBudget = null; }
     
     /**
      * Constructor for the AccountView
@@ -130,6 +146,7 @@ public class AccountView extends JFrame {
      */
     private void createHeader() {
         JPanel headerPanel = new JPanel();
+        headerPanel.setName("headerPanel");
         headerPanel.setBackground(PRIMARY_BLUE);
         headerPanel.setPreferredSize(new Dimension(getWidth(), 50));
         headerPanel.setLayout(new BorderLayout());
@@ -539,6 +556,25 @@ public class AccountView extends JFrame {
     }
     
     /**
+     * Adds a form field with label and value to a panel
+     * @param panel The panel to add the field to
+     * @param labelText The label text
+     * @param valueText The value text
+     */
+    private void addFormField(JPanel panel, String labelText, String valueText) {
+        JLabel label = new JLabel(labelText);
+        label.setFont(CONTENT_FONT);
+        
+        JTextField textField = new JTextField(valueText);
+        textField.setFont(CONTENT_FONT);
+        textField.setPreferredSize(new Dimension(textField.getPreferredSize().width, 40));
+        textField.setMargin(new Insets(8, 10, 8, 10));
+        
+        panel.add(label);
+        panel.add(textField);
+    }
+    
+    /**
      * Saves account settings including session timeout
      */
     private void saveAccountSettings() {
@@ -581,113 +617,126 @@ public class AccountView extends JFrame {
         accountsContainer.setLayout(new BoxLayout(accountsContainer, BoxLayout.Y_AXIS));
         accountsContainer.setBackground(Color.WHITE);
         
-        // Header with total assets summary
-        JPanel assetSummaryPanel = new JPanel(new BorderLayout());
-        assetSummaryPanel.setBackground(LIGHT_GRAY);
-        assetSummaryPanel.setBorder(BorderFactory.createCompoundBorder(
+        // 预算概览面板 - 修改标签为预算相关内容
+        JPanel budgetSummaryPanel = new JPanel(new BorderLayout());
+        budgetSummaryPanel.setBackground(LIGHT_GRAY);
+        budgetSummaryPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)));
-        assetSummaryPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
-        assetSummaryPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        budgetSummaryPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        budgetSummaryPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel totalAssetsLabel = new JLabel("Total Assets");
-        totalAssetsLabel.setFont(SUBHEADER_FONT);
+        JLabel remainingBudgetLabel = new JLabel("Remaining Budget");
+        remainingBudgetLabel.setFont(SUBHEADER_FONT);
         
-        // Get current user's currency preference
+        // 获取当前用户的预算信息
+        double totalBudget = AccountView.customBudget != null ? 
+            AccountView.customBudget : (AccountView.isCNYBudgetBoost ? 10000.00 : 5000.00);
+        
+        // 加载所有交易记录一次，避免重复加载 - 使用loadAllTransactions来获取所有用户的交易
+        List<Transaction> allTransactions = TransactionManager.loadAllTransactions();
+        
+        // 获取消费总额 - 从 TransactionManager 中获取
+        double totalSpent = 0.0;
+        for (Transaction transaction : allTransactions) {
+            // 只计算当前用户的消费总额
+            if (currentUser != null && transaction.getUserId().equals(currentUser.getUsername())) {
+                totalSpent += transaction.getAmount();
+            }
+        }
+        
+        // 计算剩余预算
+        double remainingBudget = totalBudget - totalSpent;
+        
+        // 获取当前用户的货币偏好
         String userCurrency = currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY;
         
-        // Convert total assets to user's currency and format it
-        double totalAssetsInCNY = 12458.92; // Base amount in CNY
-        double totalAssetsInUserCurrency = currencyManager.convert(totalAssetsInCNY, CurrencyManager.CNY, userCurrency);
-        String formattedTotalAssets = currencyManager.format(totalAssetsInUserCurrency, userCurrency);
+        // 格式化金额
+        String formattedRemainingBudget = currencyManager.format(remainingBudget, userCurrency);
+        String formattedTotalBudget = currencyManager.format(totalBudget, userCurrency);
+        String formattedTotalSpent = currencyManager.format(totalSpent, userCurrency);
         
-        // Format other amounts
-        double assetsInCNY = 15250.75;
-        double debtsInCNY = -2791.83;
-        double netWorthInCNY = 12458.92;
-        
-        // Convert to user currency
-        double assetsInUserCurrency = currencyManager.convert(assetsInCNY, CurrencyManager.CNY, userCurrency);
-        double debtsInUserCurrency = currencyManager.convert(debtsInCNY, CurrencyManager.CNY, userCurrency);
-        double netWorthInUserCurrency = currencyManager.convert(netWorthInCNY, CurrencyManager.CNY, userCurrency);
-        
-        // Format amounts
-        String formattedAssets = currencyManager.format(assetsInUserCurrency, userCurrency);
-        String formattedDebts = currencyManager.format(debtsInUserCurrency, userCurrency);
-        String formattedNetWorth = currencyManager.format(netWorthInUserCurrency, userCurrency);
-        
-        // Update labels
-        JLabel totalAssetsValue = new JLabel(formattedTotalAssets);
-        totalAssetsValue.setFont(new Font("Arial", Font.BOLD, 24));
-        totalAssetsValue.setForeground(POSITIVE_GREEN);
+        // 更新标签
+        JLabel remainingBudgetValue = new JLabel(formattedRemainingBudget);
+        remainingBudgetValue.setFont(new Font("Arial", Font.BOLD, 24));
+        remainingBudgetValue.setForeground(POSITIVE_GREEN);
         
         JPanel detailsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
         detailsPanel.setBackground(LIGHT_GRAY);
         
-        addAssetDetail(detailsPanel, "Assets", formattedAssets, POSITIVE_GREEN);
-        addAssetDetail(detailsPanel, "Debts", formattedDebts, NEGATIVE_RED);
-        addAssetDetail(detailsPanel, "Net Worth", formattedNetWorth, POSITIVE_GREEN);
+        // 添加详细信息 - 总预算、消费、剩余预算
+        addAssetDetail(detailsPanel, "Total Budget", formattedTotalBudget, POSITIVE_GREEN);
+        addAssetDetail(detailsPanel, "Spent", formattedTotalSpent, NEGATIVE_RED);
+        addAssetDetail(detailsPanel, "Remaining", formattedRemainingBudget, POSITIVE_GREEN);
         
-        assetSummaryPanel.add(totalAssetsLabel, BorderLayout.NORTH);
-        assetSummaryPanel.add(totalAssetsValue, BorderLayout.WEST);
-        assetSummaryPanel.add(detailsPanel, BorderLayout.EAST);
+        budgetSummaryPanel.add(remainingBudgetLabel, BorderLayout.NORTH);
+        budgetSummaryPanel.add(remainingBudgetValue, BorderLayout.WEST);
+        budgetSummaryPanel.add(detailsPanel, BorderLayout.EAST);
         
-        // Section title
-        JLabel accountsLabel = new JLabel("My Accounts");
+        // 用户账户部分标题
+        JLabel accountsLabel = new JLabel("User Accounts");
         accountsLabel.setFont(SUBHEADER_FONT);
         accountsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         accountsLabel.setBorder(new EmptyBorder(20, 0, 10, 0));
         
-        // Create account cards
+        // 创建用户账户列表
         JPanel accountsList = new JPanel();
         accountsList.setLayout(new BoxLayout(accountsList, BoxLayout.Y_AXIS));
         accountsList.setBackground(Color.WHITE);
         accountsList.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        // Banking accounts
-        JLabel bankAccountsLabel = new JLabel("Banking");
-        bankAccountsLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        bankAccountsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bankAccountsLabel.setBorder(new EmptyBorder(10, 0, 5, 0));
+        // 从 UserManager 中获取所有用户
+        Map<String, User> allUsers = UserManager.getInstance().getAllUsers();
         
-        // Add Chinese bank accounts
-        addAccountCard(accountsList, "Bank of China", "Checking", "¥2,453.65", "account-bank.png");
-        addAccountCard(accountsList, "ICBC", "Savings", "¥8,257.12", "account-bank.png");
-        addAccountCard(accountsList, "China Construction Bank", "Checking", "¥1,785.30", "account-bank.png");
-        addAccountCard(accountsList, "Agricultural Bank of China", "Savings", "¥925.45", "account-bank.png");
+        if (allUsers != null && !allUsers.isEmpty()) {
+            // 遍历所有用户，添加到列表
+            for (User user : allUsers.values()) {
+                // 为每个用户获取其预算信息
+                double userBudget = 5000.0; // 默认预算
+                double userSpent = 0.0;
+                double userRemaining = userBudget;
+                
+                // 给每个用户单独计算预算和消费 - 使用真实交易数据
+                // 获取用户的自定义预算设置，或者使用默认值
+                userBudget = AccountView.customBudget != null ? 
+                    AccountView.customBudget : (AccountView.isCNYBudgetBoost ? 10000.00 : 5000.00);
+                    
+                // 计算用户的消费总额 - 不需要创建新的交易列表，直接累加
+                userSpent = 0.0; // 重置消费额
+                for (Transaction transaction : allTransactions) {
+                    // 如果交易记录属于当前遍历的用户，则计入该用户的消费总额
+                    if (transaction.getUserId() != null && transaction.getUserId().equals(user.getUsername())) {
+                        userSpent += transaction.getAmount();
+                    }
+                }
+                
+                // 如果没有消费记录，使用默认/示例值
+                if (userSpent == 0.0) {
+                    // 为每个用户模拟不同的固定消费额，而不是随机值
+                    // 基于用户名的哈希来生成稳定的消费额 (0-3000范围)
+                    int hash = Math.abs(user.getUsername().hashCode());
+                    userSpent = 500 + (hash % 25) * 100; // 500-3000范围内，以100为步长
+                }
+                
+                // 计算剩余预算
+                userRemaining = userBudget - userSpent;
+                
+                // 格式化剩余预算金额
+                String formattedUserRemaining = currencyManager.format(userRemaining, userCurrency);
+                
+                // 添加用户账户卡片 - 显示剩余预算
+                addUserAccountCard(accountsList, user.getUsername(), user.getEmail(), formattedUserRemaining);
+            }
+        } else {
+            // 如果没有用户，显示提示
+            JLabel noUsersLabel = new JLabel("No user accounts found");
+            noUsersLabel.setFont(CONTENT_FONT);
+            noUsersLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            accountsList.add(noUsersLabel);
+        }
         
-        // Credit accounts
-        JLabel creditAccountsLabel = new JLabel("Credit Cards");
-        creditAccountsLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        creditAccountsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        creditAccountsLabel.setBorder(new EmptyBorder(20, 0, 5, 0));
-        
-        // Add Chinese credit cards
-        addAccountCard(accountsList, "China Merchants Bank", "Credit Card", "-¥1,853.27", "account-credit.png");
-        addAccountCard(accountsList, "Bank of Communications", "Credit Card", "-¥938.56", "account-credit.png");
-        
-        // Digital wallet accounts
-        JLabel digitalWalletLabel = new JLabel("Digital Wallets");
-        digitalWalletLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        digitalWalletLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        digitalWalletLabel.setBorder(new EmptyBorder(20, 0, 5, 0));
-        
-        // Add Chinese digital wallets
-        addAccountCard(accountsList, "Alipay", "Digital Wallet", "¥345.98", "account-digital.png");
-        addAccountCard(accountsList, "WeChat Pay", "Digital Wallet", "¥154.23", "account-digital.png");
-        
-        // Investments
-        JLabel investmentsLabel = new JLabel("Investments");
-        investmentsLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        investmentsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        investmentsLabel.setBorder(new EmptyBorder(20, 0, 5, 0));
-        
-        // Add investment accounts
-        addAccountCard(accountsList, "E-Fund", "Fund Investment", "¥3,452.87", "account-investment.png");
-        addAccountCard(accountsList, "China Securities", "Stock Account", "¥586.90", "account-investment.png");
-        
-        // Add account button with dialog for bank selection
-        JButton addAccountButton = new JButton("+ Add New Account");
+        // 添加新用户按钮
+        JButton addAccountButton = new JButton("+ Register New User");
         addAccountButton.setFont(CONTENT_FONT);
         addAccountButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         addAccountButton.setBackground(PRIMARY_BLUE);
@@ -700,148 +749,217 @@ public class AccountView extends JFrame {
         addAccountButton.setMargin(new Insets(10, 15, 10, 15));
         addAccountButton.setActionCommand("addAccount");
         
-        // Add action listener for the add account button
+        // 添加注册新用户按钮的动作
         addAccountButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showAddAccountDialog();
+                dispose(); // 关闭当前窗口
+                new RegisterView(); // 打开注册页面
             }
         });
         
-        // Add components to the accounts container
-        accountsContainer.add(assetSummaryPanel);
+        // 添加组件到账户容器
+        accountsContainer.add(budgetSummaryPanel);
         accountsContainer.add(accountsLabel);
-        accountsContainer.add(bankAccountsLabel);
         accountsContainer.add(accountsList);
         accountsContainer.add(Box.createVerticalStrut(20));
         accountsContainer.add(addAccountButton);
         
-        // Add scroll pane
+        // 添加滚动面板
         JScrollPane scrollPane = new JScrollPane(accountsContainer);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         
         accountsManagerContent.add(scrollPane, BorderLayout.CENTER);
         
-        // Add to cards panel
+        // 添加到卡片面板
         cardsPanel.add(accountsManagerContent, ACCOUNTS_MANAGER_PANEL);
     }
     
     /**
-     * Shows a dialog for adding a new account with bank selection
+     * 添加一个用户账户卡片
+     * @param panel 要添加卡片的面板
+     * @param username 用户名
+     * @param email 邮箱
+     * @param budget 预算金额
      */
-    private void showAddAccountDialog() {
-        JDialog addAccountDialog = new JDialog(this, "Add New Account", true);
-        addAccountDialog.setSize(400, 350);
-        addAccountDialog.setLocationRelativeTo(this);
-        addAccountDialog.setLayout(new BorderLayout());
+    private void addUserAccountCard(JPanel panel, String username, String email, String budget) {
+        JPanel accountCard = new JPanel(new BorderLayout());
+        accountCard.setBackground(Color.WHITE);
+        accountCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)));
+        accountCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        accountCard.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new GridLayout(5, 2, 10, 20));
-        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        // 用户头像占位符
+        JPanel iconPlaceholder = new JPanel();
+        iconPlaceholder.setBackground(LIGHT_GRAY);
+        iconPlaceholder.setPreferredSize(new Dimension(50, 50));
         
-        // Bank selection
-        JLabel bankLabel = new JLabel("Bank:");
-        bankLabel.setFont(CONTENT_FONT);
+        // 在圆形区域中显示用户名首字母
+        JLabel initialLabel = new JLabel(username.substring(0, 1).toUpperCase());
+        initialLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        initialLabel.setForeground(Color.WHITE);
+        initialLabel.setHorizontalAlignment(SwingConstants.CENTER);
         
-        String[] bankOptions = {
-            "Select your bank",
-            "Bank of China", 
-            "ICBC", 
-            "China Construction Bank", 
-            "Agricultural Bank of China", 
-            "Bank of Communications", 
-            "China Merchants Bank", 
-            "Other"
-        };
+        iconPlaceholder.setLayout(new BorderLayout());
+        iconPlaceholder.add(initialLabel, BorderLayout.CENTER);
         
-        JComboBox<String> bankComboBox = new JComboBox<>(bankOptions);
-        bankComboBox.setSelectedIndex(0);
+        // 用户信息面板
+        JPanel userInfoPanel = new JPanel();
+        userInfoPanel.setLayout(new BoxLayout(userInfoPanel, BoxLayout.Y_AXIS));
+        userInfoPanel.setBackground(Color.WHITE);
+        userInfoPanel.setBorder(new EmptyBorder(0, 10, 0, 0));
         
-        // Account type
-        JLabel accountTypeLabel = new JLabel("Account Type:");
-        accountTypeLabel.setFont(CONTENT_FONT);
+        JLabel nameLabel = new JLabel(username);
+        nameLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        String[] accountTypeOptions = {
-            "Select account type",
-            "Checking", 
-            "Savings", 
-            "Credit Card", 
-            "Digital Wallet", 
-            "Investment"
-        };
+        JLabel emailLabel = new JLabel(email);
+        emailLabel.setFont(CONTENT_FONT);
+        emailLabel.setForeground(DARK_GRAY);
+        emailLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JComboBox<String> accountTypeComboBox = new JComboBox<>(accountTypeOptions);
-        accountTypeComboBox.setSelectedIndex(0);
+        userInfoPanel.add(nameLabel);
+        userInfoPanel.add(Box.createVerticalStrut(3));
+        userInfoPanel.add(emailLabel);
         
-        // Account name
-        JLabel accountNameLabel = new JLabel("Account Name:");
-        accountNameLabel.setFont(CONTENT_FONT);
+        // 预算标签
+        JLabel budgetLabel = new JLabel(budget);
+        budgetLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        budgetLabel.setForeground(POSITIVE_GREEN);
         
-        JTextField accountNameField = new JTextField();
+        // 切换账户按钮
+        JButton switchButton = new JButton("Switch Account");
+        switchButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        switchButton.setFocusPainted(false);
+        switchButton.setBorderPainted(false);
+        switchButton.setBackground(PRIMARY_BLUE);
+        switchButton.setForeground(Color.WHITE);
         
-        // Initial balance
-        JLabel balanceLabel = new JLabel("Initial Balance:");
-        balanceLabel.setFont(CONTENT_FONT);
+        // 判断是否为当前用户
+        boolean isCurrentUser = currentUser != null && username.equals(currentUser.getUsername());
+        if (isCurrentUser) {
+            switchButton.setText("Current Account");
+            switchButton.setEnabled(false);
+        }
         
-        JTextField balanceField = new JTextField();
-        
-        // Add fields to form
-        formPanel.add(bankLabel);
-        formPanel.add(bankComboBox);
-        formPanel.add(accountTypeLabel);
-        formPanel.add(accountTypeComboBox);
-        formPanel.add(accountNameLabel);
-        formPanel.add(accountNameField);
-        formPanel.add(balanceLabel);
-        formPanel.add(balanceField);
-        
-        // Buttons panel
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonsPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
-        
-        JButton cancelButton = new JButton("Cancel");
-        cancelButton.setFont(CONTENT_FONT);
-        cancelButton.addActionListener(e -> addAccountDialog.dispose());
-        
-        JButton addButton = new JButton("Add Account");
-        addButton.setFont(CONTENT_FONT);
-        addButton.setBackground(PRIMARY_BLUE);
-        addButton.setForeground(Color.WHITE);
-        addButton.setOpaque(true);
-        addButton.setBorderPainted(false);
-        addButton.setFocusPainted(false);
-        
-        addButton.addActionListener(e -> {
-            // Simple validation
-            if (bankComboBox.getSelectedIndex() == 0 || 
-                accountTypeComboBox.getSelectedIndex() == 0 ||
-                accountNameField.getText().trim().isEmpty() ||
-                balanceField.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(addAccountDialog, 
-                    "Please fill in all fields", 
-                    "Validation Error", 
-                    JOptionPane.ERROR_MESSAGE);
-                return;
+        // 添加切换账户按钮的动作
+        switchButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!isCurrentUser) {
+                    switchToUser(username);
+                }
             }
-            
-            // Here you would normally save the account to a database
-            // For now, just close the dialog
-            JOptionPane.showMessageDialog(addAccountDialog, 
-                "Account added successfully!", 
-                "Success", 
-                JOptionPane.INFORMATION_MESSAGE);
-            addAccountDialog.dispose();
         });
         
-        buttonsPanel.add(cancelButton);
-        buttonsPanel.add(addButton);
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(Color.WHITE);
+        rightPanel.add(budgetLabel, BorderLayout.NORTH);
+        rightPanel.add(switchButton, BorderLayout.SOUTH);
         
-        // Add panels to dialog
-        addAccountDialog.add(formPanel, BorderLayout.CENTER);
-        addAccountDialog.add(buttonsPanel, BorderLayout.SOUTH);
+        accountCard.add(iconPlaceholder, BorderLayout.WEST);
+        accountCard.add(userInfoPanel, BorderLayout.CENTER);
+        accountCard.add(rightPanel, BorderLayout.EAST);
         
-        addAccountDialog.setVisible(true);
+        // 添加卡片到面板
+        panel.add(accountCard);
+        panel.add(Box.createVerticalStrut(10));
+    }
+    
+    /**
+     * 切换到指定用户
+     * @param username 要切换到的用户名
+     */
+    private void switchToUser(String username) {
+        // 创建一个对话框让用户输入密码
+        JDialog loginDialog = new JDialog(this, "Account Switch", true);
+        loginDialog.setSize(350, 200);
+        loginDialog.setLocationRelativeTo(this);
+        loginDialog.setLayout(new BorderLayout());
+        
+        JPanel inputPanel = new JPanel(new GridLayout(2, 2, 10, 10));
+        inputPanel.setBorder(new EmptyBorder(20, 20, 10, 20));
+        
+        JLabel usernameLabel = new JLabel("Username:");
+        JTextField usernameField = new JTextField(username);
+        usernameField.setEditable(false); // 用户名不可编辑
+        
+        JLabel passwordLabel = new JLabel("Password:");
+        JPasswordField passwordField = new JPasswordField();
+        
+        inputPanel.add(usernameLabel);
+        inputPanel.add(usernameField);
+        inputPanel.add(passwordLabel);
+        inputPanel.add(passwordField);
+        
+        // 按钮面板
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
+        
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(e -> loginDialog.dispose());
+        
+        JButton loginButton = new JButton("Login");
+        loginButton.setBackground(PRIMARY_BLUE);
+        loginButton.setForeground(Color.WHITE);
+        loginButton.setOpaque(true); // 确保按钮背景不透明
+        loginButton.setBorderPainted(false);
+        
+        // 登录按钮动作
+        loginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String password = new String(passwordField.getPassword());
+                
+                // 验证密码
+                if (UserManager.getInstance().authenticateUser(username, password)) {
+                    // 登录成功，关闭对话框
+                    loginDialog.dispose();
+                    
+                    // 停止当前会话监控
+                    SessionManager.getInstance().stopSession();
+                    
+                    // 关闭当前视图并打开新的账户视图
+                    dispose();
+                    new AccountView();
+                } else {
+                    // 密码错误
+                    JOptionPane.showMessageDialog(
+                        loginDialog,
+                        "Incorrect password. Please try again.",
+                        "Login Failed",
+                        JOptionPane.ERROR_MESSAGE
+                    );
+                    passwordField.setText(""); // 清空密码字段
+                }
+            }
+        });
+        
+        // Apply theme to buttons if CNY theme is active
+        if (AccountView.isCNYTheme) {
+            cancelButton.setBackground(AccountView.CNY_YELLOW);
+            cancelButton.setForeground(AccountView.CNY_RED);
+            cancelButton.setOpaque(true);
+            cancelButton.setBorderPainted(false);
+            
+            loginButton.setBackground(AccountView.CNY_YELLOW);
+            loginButton.setForeground(AccountView.CNY_RED);
+        }
+        
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(loginButton);
+        
+        loginDialog.add(inputPanel, BorderLayout.CENTER);
+        loginDialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        // 设置回车键触发登录按钮
+        loginDialog.getRootPane().setDefaultButton(loginButton);
+        
+        // 显示对话框
+        loginDialog.setVisible(true);
     }
     
     /**
@@ -871,110 +989,6 @@ public class AccountView extends JFrame {
         detailPanel.add(detailValue);
         
         panel.add(detailPanel);
-    }
-    
-    /**
-     * Adds an account card to the accounts list
-     * @param panel The panel to add the account card to
-     * @param accountName The name of the account
-     * @param accountType The type of account
-     * @param balance The account balance
-     * @param iconPath The path to the account icon
-     */
-    private void addAccountCard(JPanel panel, String accountName, String accountType, String balance, String iconPath) {
-        JPanel accountCard = new JPanel(new BorderLayout());
-        accountCard.setBackground(Color.WHITE);
-        accountCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
-                BorderFactory.createEmptyBorder(12, 15, 12, 15)));
-        accountCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
-        accountCard.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        // For demo purposes, we'll create a placeholder for the icon
-        JPanel iconPlaceholder = new JPanel();
-        iconPlaceholder.setBackground(LIGHT_GRAY);
-        iconPlaceholder.setPreferredSize(new Dimension(50, 50));
-        
-        JPanel accountInfoPanel = new JPanel();
-        accountInfoPanel.setLayout(new BoxLayout(accountInfoPanel, BoxLayout.Y_AXIS));
-        accountInfoPanel.setBackground(Color.WHITE);
-        accountInfoPanel.setBorder(new EmptyBorder(0, 10, 0, 0));
-        
-        JLabel nameLabel = new JLabel(accountName);
-        nameLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel typeLabel = new JLabel(accountType);
-        typeLabel.setFont(CONTENT_FONT);
-        typeLabel.setForeground(DARK_GRAY);
-        typeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        accountInfoPanel.add(nameLabel);
-        accountInfoPanel.add(Box.createVerticalStrut(3));
-        accountInfoPanel.add(typeLabel);
-        
-        JLabel balanceLabel = new JLabel(balance);
-        balanceLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        balanceLabel.setForeground(balance.startsWith("-") ? NEGATIVE_RED : POSITIVE_GREEN);
-        
-        // Button to manage account
-        JButton manageButton = new JButton("Manage");
-        manageButton.setFont(new Font("Arial", Font.PLAIN, 12));
-        manageButton.setFocusPainted(false);
-        manageButton.setBorderPainted(false);
-        manageButton.setBackground(PRIMARY_BLUE);
-        manageButton.setForeground(Color.WHITE);
-        
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(Color.WHITE);
-        rightPanel.add(balanceLabel, BorderLayout.NORTH);
-        rightPanel.add(manageButton, BorderLayout.SOUTH);
-        
-        accountCard.add(iconPlaceholder, BorderLayout.WEST);
-        accountCard.add(accountInfoPanel, BorderLayout.CENTER);
-        accountCard.add(rightPanel, BorderLayout.EAST);
-        
-        // Convert and format balance
-        try {
-            String userCurrency = currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY;
-            
-            // Parse the original balance from CNY string
-            String cnyValueStr = balance.replace("¥", "").replace(",", "").trim();
-            double cnyValue = Double.parseDouble(cnyValueStr);
-            
-            // Convert to user currency
-            double userCurrencyValue = currencyManager.convert(cnyValue, CurrencyManager.CNY, userCurrency);
-            
-            // Format balance
-            String formattedBalance = currencyManager.format(userCurrencyValue, userCurrency);
-            balanceLabel.setText(formattedBalance);
-        } catch (NumberFormatException e) {
-            // If parsing fails, use the original balance
-            balanceLabel.setText(balance);
-        }
-        
-        // Add the account card to the panel with some spacing
-        panel.add(accountCard);
-        panel.add(Box.createVerticalStrut(10));
-    }
-    
-    /**
-     * Adds a form field with label and value to a panel
-     * @param panel The panel to add the field to
-     * @param labelText The label text
-     * @param valueText The value text
-     */
-    private void addFormField(JPanel panel, String labelText, String valueText) {
-        JLabel label = new JLabel(labelText);
-        label.setFont(CONTENT_FONT);
-        
-        JTextField textField = new JTextField(valueText);
-        textField.setFont(CONTENT_FONT);
-        textField.setPreferredSize(new Dimension(textField.getPreferredSize().width, 40));
-        textField.setMargin(new Insets(8, 10, 8, 10));
-        
-        panel.add(label);
-        panel.add(textField);
     }
     
     /**
@@ -1022,13 +1036,10 @@ public class AccountView extends JFrame {
         currencyCombo.setPreferredSize(new Dimension(200, 30));
         
         // Add action listener to immediately show currency changes in preview
-        currencyCombo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        currencyCombo.addActionListener(e -> {
                 String newCurrency = (String) currencyCombo.getSelectedItem();
                 // Preview panel to show example values in the selected currency
                 updateCurrencyPreview(newCurrency, currencyPanel);
-            }
         });
         
         currencyOptionsPanel.add(currencyCombo);
@@ -1052,83 +1063,54 @@ public class AccountView extends JFrame {
         currencyPanel.add(Box.createVerticalStrut(10));
         currencyPanel.add(currencyPreviewPanel); // Add the preview panel
         
-        // 3. Notification preferences
-        JPanel notificationPanel = new JPanel();
-        notificationPanel.setLayout(new BoxLayout(notificationPanel, BoxLayout.Y_AXIS));
-        notificationPanel.setBackground(Color.WHITE);
-        notificationPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        notificationPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        // 2. Chinese New Year Personalization Section
+        JPanel cnyPanel = new JPanel();
+        cnyPanel.setLayout(new BoxLayout(cnyPanel, BoxLayout.Y_AXIS));
+        cnyPanel.setBackground(Color.WHITE);
+        cnyPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cnyPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
         
-        JLabel notificationLabel = new JLabel("Notification Preferences");
-        notificationLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        notificationLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel cnyLabel = new JLabel("Chinese New Year Personalization");
+        cnyLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        cnyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JPanel notificationOptionsPanel = new JPanel(new GridLayout(4, 1));
-        notificationOptionsPanel.setBackground(Color.WHITE);
-        notificationOptionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Theme switch
+        JCheckBox themeSwitch = new JCheckBox("Red & Yellow Theme (All Pages)");
+        themeSwitch.setFont(CONTENT_FONT);
+        themeSwitch.setBackground(Color.WHITE);
+        themeSwitch.setSelected(isCNYTheme);
         
-        JCheckBox transactionAlertCheckbox = new JCheckBox("Transaction Alerts");
-        transactionAlertCheckbox.setFont(CONTENT_FONT);
-        transactionAlertCheckbox.setBackground(Color.WHITE);
-        transactionAlertCheckbox.setSelected(currentUser != null ? currentUser.isTransactionAlerts() : true);
+        // Budget boost switch
+        JCheckBox budgetSwitch = new JCheckBox("Boost Budget to 10,000 (Budget Page)");
+        budgetSwitch.setFont(CONTENT_FONT);
+        budgetSwitch.setBackground(Color.WHITE);
+        budgetSwitch.setSelected(isCNYBudgetBoost);
         
-        JCheckBox budgetAlertCheckbox = new JCheckBox("Budget Alerts");
-        budgetAlertCheckbox.setFont(CONTENT_FONT);
-        budgetAlertCheckbox.setBackground(Color.WHITE);
-        budgetAlertCheckbox.setSelected(currentUser != null ? currentUser.isBudgetAlerts() : true);
+        // Add listeners
+        themeSwitch.addActionListener(e -> {
+            isCNYTheme = themeSwitch.isSelected();
+            applyThemeToAllComponents(this);
+            JOptionPane.showMessageDialog(this, 
+                "Theme settings will be applied when you navigate between pages.", 
+                "Theme Updated", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
         
-        JCheckBox billReminderCheckbox = new JCheckBox("Bill Payment Reminders");
-        billReminderCheckbox.setFont(CONTENT_FONT);
-        billReminderCheckbox.setBackground(Color.WHITE);
-        billReminderCheckbox.setSelected(currentUser != null ? currentUser.isBillReminders() : true);
+        budgetSwitch.addActionListener(e -> {
+            isCNYBudgetBoost = budgetSwitch.isSelected();
+            JOptionPane.showMessageDialog(this, 
+                "Budget boost setting will take effect when you visit the Budget page.", 
+                "Budget Updated", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
         
-        JCheckBox financialTipsCheckbox = new JCheckBox("Financial Tips & Advice");
-        financialTipsCheckbox.setFont(CONTENT_FONT);
-        financialTipsCheckbox.setBackground(Color.WHITE);
-        financialTipsCheckbox.setSelected(currentUser != null ? currentUser.isFinancialTips() : true);
+        cnyPanel.add(cnyLabel);
+        cnyPanel.add(Box.createVerticalStrut(10));
+        cnyPanel.add(themeSwitch);
+        cnyPanel.add(Box.createVerticalStrut(5));
+        cnyPanel.add(budgetSwitch);
         
-        notificationOptionsPanel.add(transactionAlertCheckbox);
-        notificationOptionsPanel.add(budgetAlertCheckbox);
-        notificationOptionsPanel.add(billReminderCheckbox);
-        notificationOptionsPanel.add(financialTipsCheckbox);
-        
-        notificationPanel.add(notificationLabel);
-        notificationPanel.add(Box.createVerticalStrut(10));
-        notificationPanel.add(notificationOptionsPanel);
-        
-        // 4. Data privacy settings
-        JPanel dataPrivacyPanel = new JPanel();
-        dataPrivacyPanel.setLayout(new BoxLayout(dataPrivacyPanel, BoxLayout.Y_AXIS));
-        dataPrivacyPanel.setBackground(Color.WHITE);
-        dataPrivacyPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        dataPrivacyPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
-        
-        JLabel dataPrivacyLabel = new JLabel("Data Privacy");
-        dataPrivacyLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        dataPrivacyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JPanel dataPrivacyOptionsPanel = new JPanel(new GridLayout(2, 1));
-        dataPrivacyOptionsPanel.setBackground(Color.WHITE);
-        dataPrivacyOptionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JCheckBox dataAnalyticsCheckbox = new JCheckBox("Allow Data Analytics for Personalized Recommendations");
-        dataAnalyticsCheckbox.setFont(CONTENT_FONT);
-        dataAnalyticsCheckbox.setBackground(Color.WHITE);
-        dataAnalyticsCheckbox.setSelected(currentUser != null ? currentUser.isAllowDataAnalytics() : true);
-        
-        JCheckBox anonymousDataCheckbox = new JCheckBox("Share Anonymous Usage Data to Improve Services");
-        anonymousDataCheckbox.setFont(CONTENT_FONT);
-        anonymousDataCheckbox.setBackground(Color.WHITE);
-        anonymousDataCheckbox.setSelected(currentUser != null ? currentUser.isShareAnonymousData() : true);
-        
-        dataPrivacyOptionsPanel.add(dataAnalyticsCheckbox);
-        dataPrivacyOptionsPanel.add(anonymousDataCheckbox);
-        
-        dataPrivacyPanel.add(dataPrivacyLabel);
-        dataPrivacyPanel.add(Box.createVerticalStrut(10));
-        dataPrivacyPanel.add(dataPrivacyOptionsPanel);
-        
-        // Add save button
+        // Save button
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -1151,21 +1133,10 @@ public class AccountView extends JFrame {
                 String newCurrency = (String) currencyCombo.getSelectedItem();
                 currentUser.setCurrency(newCurrency);
                 
-                // Save notification preferences
-                currentUser.setTransactionAlerts(transactionAlertCheckbox.isSelected());
-                currentUser.setBudgetAlerts(budgetAlertCheckbox.isSelected());
-                currentUser.setBillReminders(billReminderCheckbox.isSelected());
-                currentUser.setFinancialTips(financialTipsCheckbox.isSelected());
-                
-                // Save data privacy preferences
-                currentUser.setAllowDataAnalytics(dataAnalyticsCheckbox.isSelected());
-                currentUser.setShareAnonymousData(anonymousDataCheckbox.isSelected());
-                
                 // Update the user in the UserManager
                 boolean saved = UserManager.getInstance().updateCurrentUser(currentUser);
                 
                 if (saved) {
-                    // Show success message
                     JOptionPane.showMessageDialog(this, 
                         "Preferences saved successfully!", 
                         "Success", 
@@ -1176,7 +1147,6 @@ public class AccountView extends JFrame {
                         updateCurrencyDisplay(newCurrency);
                     }
                 } else {
-                    // Show error message
                     JOptionPane.showMessageDialog(this, 
                         "Failed to save preferences. Please try again.", 
                         "Error", 
@@ -1195,8 +1165,7 @@ public class AccountView extends JFrame {
         // Add components to main content panel
         mainContent.add(preferencesHeaderLabel);
         mainContent.add(currencyPanel);
-        mainContent.add(notificationPanel);
-        mainContent.add(dataPrivacyPanel);
+        mainContent.add(cnyPanel);
         mainContent.add(buttonPanel);
         
         // Create a scroll pane for the main content
@@ -1392,6 +1361,66 @@ public class AccountView extends JFrame {
         
         // Show the dialog
         changePasswordDialog.setVisible(true);
+    }
+    
+    /**
+     * Applies CNY theme to all components in the frame
+     * @param frame The frame containing components to update
+     */
+    public static void applyThemeToAllComponents(JFrame frame) {
+        applyThemeToComponent(frame.getContentPane());
+        frame.repaint();
+    }
+    
+    /**
+     * Recursively applies CNY theme to components
+     * @param component The component to update
+     */
+    public static void applyThemeToComponent(Component component) {
+        if (component instanceof JPanel) {
+            JPanel panel = (JPanel) component;
+            
+            // 特殊处理顶部面板
+            if (panel.getName() != null && panel.getName().equals("headerPanel")) {
+                panel.setBackground(isCNYTheme ? CNY_RED : new Color(52, 152, 219)); // PRIMARY_BLUE
+            } else {
+                panel.setBackground(isCNYTheme ? CNY_RED : Color.WHITE);
+            }
+            
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (component instanceof JButton) {
+            JButton button = (JButton) component;
+            if (isCNYTheme) {
+                button.setBackground(CNY_YELLOW);
+                button.setForeground(CNY_RED);
+            } else {
+                // 根据按钮文本区分不同按钮
+                if (button.getText().equals("Logout")) {
+                    button.setBackground(new Color(231, 76, 60)); // 红色
+                    button.setForeground(Color.WHITE);
+                } else {
+                    button.setBackground(new Color(52, 152, 219)); // PRIMARY_BLUE
+                    button.setForeground(Color.WHITE);
+                }
+            }
+        } else if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            
+            // 特殊处理LoginView的标题
+            if (label.getText() != null && label.getText().equals("Finance Tracker")) {
+                label.setForeground(isCNYTheme ? CNY_YELLOW : new Color(52, 152, 219)); // PRIMARY_BLUE
+            }
+            // 根据字体大小或样式来区分不同标签
+            else if (label.getFont().getSize() >= 20) { // 大标题或头部标签
+                label.setForeground(isCNYTheme ? CNY_YELLOW : Color.WHITE);
+            } else if (label.getFont().getStyle() == Font.BOLD) { // 粗体标签
+                label.setForeground(isCNYTheme ? CNY_YELLOW : new Color(100, 100, 100)); // DARK_GRAY
+            } else {
+                label.setForeground(isCNYTheme ? CNY_YELLOW : Color.BLACK);
+            }
+        }
     }
     
     /**
