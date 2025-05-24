@@ -80,8 +80,98 @@ public class FinancialAdvisorView extends JFrame {
         // Start session monitoring
         SessionManager.getInstance().startSession(this);
         
-        // 应用红黄主题
-        AccountView.applyThemeToAllComponents(this);
+        // Apply CNY theme if enabled
+        if (AccountView.isCNYTheme) {
+            applyCNYTheme();
+        }
+    }
+    
+    /**
+     * Applies the CNY theme to all components
+     */
+    private void applyCNYTheme() {
+        // Apply theme to the entire frame components
+        applyThemeToComponent(this.getContentPane());
+        
+        // Ensure specific panels are themed correctly
+        if (headerPanel != null) {
+            headerPanel.setBackground(AccountView.CNY_RED);
+            headerPanel.repaint();
+        }
+        
+        if (sidebarPanel != null) {
+            sidebarPanel.setBackground(AccountView.CNY_RED);
+            sidebarPanel.repaint();
+        }
+        
+        if (contentPanel != null) {
+            contentPanel.setBackground(AccountView.CNY_RED);
+            contentPanel.repaint();
+        }
+        
+        if (footerPanel != null) {
+            footerPanel.setBackground(AccountView.CNY_RED);
+            footerPanel.repaint();
+        }
+        
+        repaint();
+    }
+    
+    /**
+     * Recursively applies the CNY theme to components
+     * @param component The component to update
+     */
+    private void applyThemeToComponent(Component component) {
+        if (component instanceof JPanel) {
+            JPanel panel = (JPanel) component;
+            panel.setBackground(AccountView.CNY_RED);
+            
+            // Process child components
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (component instanceof JButton) {
+            JButton button = (JButton) component;
+            // Special case for logout button
+            if (button.getText().equals("Logout")) {
+                button.setBackground(new Color(231, 76, 60)); // Keep red
+                button.setForeground(Color.WHITE);
+            } else {
+                button.setBackground(AccountView.CNY_YELLOW);
+                button.setForeground(AccountView.CNY_RED);
+            }
+        } else if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            // Special case for header title
+            if (label.getFont().getSize() >= 20) {
+                label.setForeground(AccountView.CNY_YELLOW);
+            } else {
+                label.setForeground(AccountView.CNY_YELLOW);
+            }
+        } else if (component instanceof JTextField) {
+            component.setBackground(Color.WHITE); // Keep white for readability
+        } else if (component instanceof JRadioButton) {
+            JRadioButton radioButton = (JRadioButton) component;
+            radioButton.setBackground(AccountView.CNY_RED);
+            radioButton.setForeground(AccountView.CNY_YELLOW);
+        } else if (component instanceof JTextPane) {
+            // Don't change background of text fields/panes for readability
+            component.setBackground(Color.WHITE);
+        } else if (component instanceof JScrollPane) {
+            JScrollPane scrollPane = (JScrollPane) component;
+            scrollPane.getViewport().setBackground(AccountView.CNY_RED);
+            
+            // Process the viewport's view
+            Component view = scrollPane.getViewport().getView();
+            if (view != null) {
+                if (view instanceof JTextPane) {
+                    // Don't change text pane background for readability
+                    view.setBackground(Color.WHITE);
+                } else {
+                    view.setBackground(AccountView.CNY_RED);
+                }
+            }
+        }
     }
     
     /**
