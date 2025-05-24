@@ -28,7 +28,7 @@ There are two methods to install and run the application:
    java -jar groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar
    ```
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104056.png" alt="屏幕截图 2025-05-24 104056" style="zoom:50%;" />
+<img src="README.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104056.png" alt="屏幕截图 2025-05-24 104056" style="zoom:50%;" />
 
 ### Method 2: Run the JAR file directly
 
@@ -37,7 +37,7 @@ There are two methods to install and run the application:
    - Execute the command: `java -jar groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar`
    - Or simply double-click on the `groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar` file
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104219.png" alt="屏幕截图 2025-05-24 104219" style="zoom:50%;" />
+<img src="README.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104219.png" alt="屏幕截图 2025-05-24 104219" style="zoom:50%;" />
 
 ## Running Tests
 
@@ -55,9 +55,9 @@ To run the application tests:
    ```
    This will execute all tests in the project
    
-   <img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111034538.png" alt="image-20250524111034538" style="zoom: 50%;" />
+   <img src="README.assets/image-20250524111034538.png" alt="image-20250524111034538" style="zoom: 50%;" />
    
-   <img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111049640.png" alt="image-20250524111049640" style="zoom:50%;" />
+   <img src="README.assets/image-20250524111049640.png" alt="image-20250524111049640" style="zoom:50%;" />
 
 **Note:** If Maven reports "Tests run: 0" even though you have test files, make sure:
 - You're using JUnit 5 annotations (@Test, @DisplayName, etc.)
@@ -93,7 +93,7 @@ To run the application tests:
 
 4. Select "Run 'TestName'"
 
-   <img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111337571.png" alt="image-20250524111337571" style="zoom:50%;" />
+   <img src="README.assets/image-20250524111337571.png" alt="image-20250524111337571" style="zoom:50%;" />
 
 ## JavaDocs Documentation
 
@@ -122,4 +122,4 @@ The JavaDocs documentation provides:
 
 This documentation is particularly useful for understanding the internal workings of the application and for developers who want to extend or maintain the codebase. 
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111257354.png" alt="image-20250524111257354" style="zoom:50%;" />
+<img src="README.assets/image-20250524111257354.png" alt="image-20250524111257354" style="zoom:50%;" />

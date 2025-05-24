@@ -73,7 +73,7 @@ There are two methods to install and run the application:
    java -jar groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar
    ```
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104056.png" alt="屏幕截图 2025-05-24 104056" style="zoom:50%;" />
+<img src="user_manual.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104056.png" alt="屏幕截图 2025-05-24 104056" style="zoom:50%;" />
 
 **Method 2: Run the JAR file directly**
 
@@ -82,7 +82,7 @@ There are two methods to install and run the application:
    - Execute the command: `java -jar groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar`
    - Or simply double-click on the `groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar` file
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104219.png" alt="屏幕截图 2025-05-24 104219" style="zoom:50%;" />
+<img src="user_manual.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104219.png" alt="屏幕截图 2025-05-24 104219" style="zoom:50%;" />
 
 ### Registration
 
@@ -98,7 +98,7 @@ When you first open the application, you'll be prompted to create an account:
 
 The application will check the strength of your password and provide feedback. For security reasons, we recommend using a strong password.
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104319.png" alt="屏幕截图 2025-05-24 104319" style="zoom: 50%;" />
+<img src="user_manual.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104319.png" alt="屏幕截图 2025-05-24 104319" style="zoom: 50%;" />
 
 ### Login
 
@@ -111,7 +111,7 @@ Once registered, you can log in to your account:
 
 If you forget your password, click on the "Forgot Password" link to reset it via email.
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 105208.png" alt="屏幕截图 2025-05-24 105208" style="zoom:50%;" />
+<img src="user_manual.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20105208.png" alt="屏幕截图 2025-05-24 105208" style="zoom:50%;" />
 
 ## Main Navigation
 
@@ -125,7 +125,7 @@ The application features a sidebar navigation menu with five main sections:
 
 Each main section may contain subsections that can be accessed by clicking on the main section name to expand or collapse the menu.
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524113422972.png" alt="image-20250524113422972" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524113422972.png" alt="image-20250524113422972" style="zoom:50%;" />
 
 ## Account
 
@@ -151,7 +151,7 @@ The Profile page displays your personal information and security settings:
 
 4. Click "Save Changes" to update your settings
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104857.png" alt="屏幕截图 2025-05-24 104857" style="zoom:50%;" />
+<img src="user_manual.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104857.png" alt="屏幕截图 2025-05-24 104857" style="zoom:50%;" />
 
 ### Accounts Manager
 
@@ -173,7 +173,7 @@ The Accounts Manager allows you to manage multiple user accounts and view budget
    - "Switch Account" buttons let you log in as a different user
    - "Register New User" button to add new accounts
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104916.png" alt="屏幕截图 2025-05-24 104916" style="zoom:50%;" />
+<img src="user_manual.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104916.png" alt="屏幕截图 2025-05-24 104916" style="zoom:50%;" />
 
 ### Preferences
 
@@ -194,7 +194,7 @@ The Preferences page lets you customize application display and behavior:
 
 4. Click "Save Preferences" to apply your changes
 
-<img src="C:\Users\lyrics61\Pictures\Screenshots\屏幕截图 2025-05-24 104926.png" alt="屏幕截图 2025-05-24 104926" style="zoom:50%;" />
+<img src="user_manual.assets/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE%202025-05-24%20104926.png" alt="屏幕截图 2025-05-24 104926" style="zoom:50%;" />
 
 ## Billing & Subscriptions
 
@@ -222,7 +222,7 @@ The Overview page displays your subscription details and recent transactions:
    - Manual Entry: Add individual transactions manually
    - Import Transactions: Import CSV files from your bank
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524110750255.png" alt="image-20250524110750255" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524110750255.png" alt="image-20250524110750255" style="zoom:50%;" />
 
 ### Manual Entry
 
@@ -245,7 +245,7 @@ The Manual Entry page allows you to add individual transactions with AI-assisted
 
 4. Click "Add Transaction" to save the entry to your financial records
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524110906546.png" alt="image-20250524110906546" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524110906546.png" alt="image-20250524110906546" style="zoom:50%;" />
 
 ### Import Transactions
 
@@ -271,7 +271,7 @@ The Import Transactions page lets you import transaction data from CSV files:
 
 5. Click "Import Transactions" to process the file and add transactions to your financial records
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524110918225.png" alt="image-20250524110918225" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524110918225.png" alt="image-20250524110918225" style="zoom:50%;" />
 
 ## Budget
 
@@ -311,9 +311,9 @@ The Budget Overview page provides a comprehensive summary of your financial situ
    - Shows date, description, category, and amount
    - Provides quick overview of recent spending activity
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524112520008.png" alt="image-20250524112520008" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524112520008.png" alt="image-20250524112520008" style="zoom:50%;" />
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524112527870.png" alt="image-20250524112527870" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524112527870.png" alt="image-20250524112527870" style="zoom:50%;" />
 
 ### AI Insights
 
@@ -342,7 +342,7 @@ The AI Insights page provides personalized financial recommendations powered by 
    - "Auto-refresh when data changes" checkbox to keep insights current
    - Ensures insights are based on your most recent financial activity
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524112550751.png" alt="image-20250524112550751" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524112550751.png" alt="image-20250524112550751" style="zoom:50%;" />
 
 ### Budget Settings
 
@@ -369,7 +369,7 @@ The Budget Settings page allows you to customize your budget configuration:
 
 5. Save your changes with the "Save Settings" button to apply new configuration
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524112608656.png" alt="image-20250524112608656" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524112608656.png" alt="image-20250524112608656" style="zoom:50%;" />
 
 ## Help Center
 
@@ -399,7 +399,7 @@ The FAQ page offers answers to commonly asked questions about the application:
    - "Is my financial data secure?"
    - "How can I set up budget alerts?"
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524112915564.png" alt="image-20250524112915564" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524112915564.png" alt="image-20250524112915564" style="zoom:50%;" />
 
 ### Live Support
 
@@ -419,7 +419,7 @@ The Live Support page connects you with customer service representatives:
    - Click "Start Chat" button to begin a support session
 
 4. Alternative Contact Methods:
-   - Email: nzy1522512646@gmail.com<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524112941888.png" alt="image-20250524112941888" style="zoom:50%;" />
+   - Email: nzy1522512646@gmail.com<img src="user_manual.assets/image-20250524112941888.png" alt="image-20250524112941888" style="zoom:50%;" />
 
 ### Feedback
 
@@ -445,7 +445,7 @@ The Feedback page allows you to submit comments, suggestions, or report issues:
    - Feature requests are collected for future updates
    - General feedback is used to improve the application
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524112951277.png" alt="image-20250524112951277" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524112951277.png" alt="image-20250524112951277" style="zoom:50%;" />
 
 ## Financial Advisor
 
@@ -486,7 +486,7 @@ The Financial Advisor section provides AI-powered financial guidance through a c
 
 The Financial Advisor can help with budgeting advice, investment recommendations, retirement planning, tax strategies, debt management, and other financial decisions based on your personal situation.
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524113450303.png" alt="image-20250524113450303" style="zoom: 33%;" />
+<img src="user_manual.assets/image-20250524113450303.png" alt="image-20250524113450303" style="zoom: 33%;" />
 
 ## Running Tests
 
@@ -503,9 +503,9 @@ To run the application tests:
    ```
    This will execute all tests in the project
    
-   <img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111034538.png" alt="image-20250524111034538" style="zoom: 50%;" />
+   <img src="user_manual.assets/image-20250524111034538.png" alt="image-20250524111034538" style="zoom: 50%;" />
    
-   <img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111049640.png" alt="image-20250524111049640" style="zoom:50%;" />
+   <img src="user_manual.assets/image-20250524111049640.png" alt="image-20250524111049640" style="zoom:50%;" />
 
 **Note:** If Maven reports "Tests run: 0" even though you have test files, make sure:
 - You're using JUnit 5 annotations (@Test, @DisplayName, etc.)
@@ -544,7 +544,7 @@ Tests verify critical functionality of the application:
 
 Test results will show passed, failed, and skipped tests along with any error messages.
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111337571.png" alt="image-20250524111337571" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524111337571.png" alt="image-20250524111337571" style="zoom:50%;" />
 
 ## JavaDocs Documentation
 
@@ -573,4 +573,4 @@ The JavaDocs documentation provides:
 
 This documentation is particularly useful for understanding the internal workings of the application and for developers who want to extend or maintain the codebase.
 
-<img src="C:\Users\lyrics61\AppData\Roaming\Typora\typora-user-images\image-20250524111257354.png" alt="image-20250524111257354" style="zoom:50%;" />
+<img src="user_manual.assets/image-20250524111257354.png" alt="image-20250524111257354" style="zoom:50%;" />
