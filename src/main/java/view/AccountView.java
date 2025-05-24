@@ -1,5 +1,6 @@
 package view;
 
+import model.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -29,6 +30,9 @@ public class AccountView extends JFrame {
     private JPanel accountSubItems;
     private boolean accountExpanded = true;
     
+    // Session timeout settings
+    private JSpinner sessionTimeoutSpinner;
+    
     // Colors and styling
     private final Color PRIMARY_BLUE = new Color(52, 152, 219);
     private final Color LIGHT_GRAY = new Color(245, 245, 245);
@@ -45,35 +49,93 @@ public class AccountView extends JFrame {
     private JPanel cardsPanel;
     private final String PROFILE_PANEL = "ProfilePanel";
     private final String ACCOUNTS_MANAGER_PANEL = "AccountsManagerPanel";
+    private final String PREFERENCES_PANEL = "PreferencesPanel";
+    
+    // Currency manager for handling currency display
+    private CurrencyManager currencyManager;
+    
+    // Notification manager for handling notifications
+    private NotificationManager notificationManager;
+    
+    // User current user
+    private User currentUser;
+    
+    // Add static fields for CNY theme and budget boost at class level (after existing fields)
+    // CNY Theme Settings
+    public static boolean isCNYTheme = false;
+    public static boolean isCNYBudgetBoost = false;
+    public static final Color CNY_RED = new Color(220, 20, 60);
+    public static final Color CNY_YELLOW = new Color(255, 215, 0);
+    
+    // 用户自定义预算（null表示未自定义）
+    public static Double customBudget = null;
+    public static void setCustomBudget(Double value) { customBudget = value; }
+    public static Double getCustomBudget() { return customBudget; }
+    public static void clearCustomBudget() { customBudget = null; }
     
     /**
      * Constructor for the AccountView
      */
     public AccountView() {
-        setTitle("Account");
+        // Initialize managers FIRST
+        UserManager userManager = UserManager.getInstance();
+        currencyManager = CurrencyManager.getInstance();
+        notificationManager = NotificationManager.getInstance();
+        
+        // Get the current user BEFORE using it
+        currentUser = userManager.getCurrentUser();
+        
+        // Check if currentUser is null and handle appropriately
+        if (currentUser == null) {
+            // Option 1: Set a default title and show error
+            setTitle("Account Overview - Error");
+            // It might be better to not even show the view if no user is logged in.
+            // Consider closing the view and showing LoginView instead.
+            // For now, we proceed but the view might be broken.
+            System.err.println("AccountView Error: currentUser is null. No user logged in.");
+             // Optionally show a message dialog
+            // JOptionPane.showMessageDialog(null, "Error: No user logged in.", "Login Error", JOptionPane.ERROR_MESSAGE);
+            // Optionally close this view
+            // dispose();
+            // return; // Prevent further initialization if desired
+        } else {
+            // Set title using the username only if currentUser is valid
+            setTitle("Account Overview - " + currentUser.getUsername());
+        }
+
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         
-        createHeader();
-        createSidebar();
-        
-        // Create card layout for different content panels
-        cardLayout = new CardLayout();
-        cardsPanel = new JPanel(cardLayout);
-        cardsPanel.setBackground(Color.WHITE);
-        
-        // Add different content panels to the card layout
-        createAccountContent();
-        createAccountsManagerContent();
-        
-        add(cardsPanel, BorderLayout.CENTER);
-        
-        // Default view is profile panel
-        cardLayout.show(cardsPanel, PROFILE_PANEL);
-        
-        setLocationRelativeTo(null);
-        setVisible(true);
+        // Only create UI components if currentUser is potentially valid (or handle null case within methods)
+        if (currentUser != null) {
+             createHeader();
+             createSidebar();
+             
+             // Create card layout for different content panels
+             cardLayout = new CardLayout();
+             cardsPanel = new JPanel(cardLayout);
+             cardsPanel.setBackground(Color.WHITE);
+             
+             // Add different content panels to the card layout
+             createAccountContent();
+             createAccountsManagerContent();
+             createPreferencesContent();
+             
+             add(cardsPanel, BorderLayout.CENTER);
+             
+             // Default view is profile panel
+             cardLayout.show(cardsPanel, PROFILE_PANEL);
+             
+             setLocationRelativeTo(null);
+             setVisible(true);
+        } else {
+            // If currentUser is null, maybe just make the frame invisible or dispose it
+             setVisible(false);
+             dispose(); // Close the frame if no user
+             // Potentially show LoginView again
+             // new LoginView(); 
+        }
     }
     
     /**
@@ -110,6 +172,12 @@ public class AccountView extends JFrame {
         logoutButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                // Log out the user
+                UserManager.getInstance().logout();
+                
+                // Stop session monitoring
+                SessionManager.getInstance().stopSession();
+                
                 dispose(); // Close current window
                 new LoginView(); // Return to login screen
             }
@@ -205,6 +273,7 @@ public class AccountView extends JFrame {
             public void mouseClicked(MouseEvent evt) {
                 setActiveSidebarItem(preferencesPanel);
                 // Show preferences settings
+                cardLayout.show(cardsPanel, PREFERENCES_PANEL);
             }
         });
         
@@ -362,9 +431,13 @@ public class AccountView extends JFrame {
         personalInfoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         personalInfoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
         
+        // Get current user information
+        String username = currentUser != null ? currentUser.getUsername() : "John Doe";
+        String email = currentUser != null ? currentUser.getEmail() : "john.doe@example.com";
+        
         // Add personal information fields
-        addFormField(personalInfoPanel, "Name:", "John Doe");
-        addFormField(personalInfoPanel, "Email:", "john.doe@example.com");
+        addFormField(personalInfoPanel, "Name:", username);
+        addFormField(personalInfoPanel, "Email:", email);
         addFormField(personalInfoPanel, "Phone:", "(123) 456-7890");
         
         // Security settings section
@@ -373,11 +446,11 @@ public class AccountView extends JFrame {
         securityLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JPanel securityPanel = new JPanel();
-        securityPanel.setLayout(new GridLayout(2, 2, 15, 25));
+        securityPanel.setLayout(new GridLayout(2, 2, 15, 25)); // Changed to 2 rows for session timeout
         securityPanel.setBackground(Color.WHITE);
         securityPanel.setBorder(new EmptyBorder(20, 0, 40, 0));
         securityPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        securityPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
+        securityPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
         
         // Add security fields
         JLabel passwordLabel = new JLabel("Password:");
@@ -393,24 +466,44 @@ public class AccountView extends JFrame {
         changePasswordButton.setMargin(new Insets(8, 15, 8, 15));
         passwordButtonPanel.add(changePasswordButton);
         
+        // Add action listener to Change Password button
+        changePasswordButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showChangePasswordDialog();
+            }
+        });
+        
         securityPanel.add(passwordLabel);
         securityPanel.add(passwordButtonPanel);
         
-        JLabel twoFactorLabel = new JLabel("Two-Factor Authentication:");
-        twoFactorLabel.setFont(CONTENT_FONT);
+        // Add session timeout setting
+        JLabel sessionTimeoutLabel = new JLabel("Session Timeout (minutes):");
+        sessionTimeoutLabel.setFont(CONTENT_FONT);
         
-        JPanel twoFactorPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        twoFactorPanel.setBackground(Color.WHITE);
+        JPanel sessionTimeoutPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        sessionTimeoutPanel.setBackground(Color.WHITE);
         
-        JToggleButton twoFactorToggle = new JToggleButton("Enable");
-        twoFactorToggle.setFont(CONTENT_FONT);
-        twoFactorToggle.setFocusPainted(false);
-        twoFactorToggle.setPreferredSize(new Dimension(twoFactorToggle.getPreferredSize().width, 40));
-        twoFactorToggle.setMargin(new Insets(8, 15, 8, 15));
-        twoFactorPanel.add(twoFactorToggle);
+        // Get current timeout setting
+        int currentTimeout = currentUser != null ? currentUser.getSessionTimeoutMinutes() : 1;
         
-        securityPanel.add(twoFactorLabel);
-        securityPanel.add(twoFactorPanel);
+        // Create spinner for timeout selection
+        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(currentTimeout, 1, 60, 1);
+        sessionTimeoutSpinner = new JSpinner(spinnerModel);
+        sessionTimeoutSpinner.setFont(CONTENT_FONT);
+        JComponent editor = sessionTimeoutSpinner.getEditor();
+        JSpinner.DefaultEditor spinnerEditor = (JSpinner.DefaultEditor)editor;
+        spinnerEditor.getTextField().setColumns(3);
+        
+        JLabel timeoutInfoLabel = new JLabel("  Auto-logout after inactivity");
+        timeoutInfoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        timeoutInfoLabel.setForeground(DARK_GRAY);
+        
+        sessionTimeoutPanel.add(sessionTimeoutSpinner);
+        sessionTimeoutPanel.add(timeoutInfoLabel);
+        
+        securityPanel.add(sessionTimeoutLabel);
+        securityPanel.add(sessionTimeoutPanel);
         
         // Add components to account details panel
         accountDetails.add(personalInfoLabel);
@@ -435,6 +528,14 @@ public class AccountView extends JFrame {
         saveButton.setPreferredSize(new Dimension(saveButton.getPreferredSize().width, 45));
         saveButton.setMargin(new Insets(10, 20, 10, 20));
         
+        // Add action listener for save button
+        saveButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                saveAccountSettings();
+            }
+        });
+        
         actionsPanel.add(saveButton);
         
         // Add scroll pane for account details
@@ -448,6 +549,36 @@ public class AccountView extends JFrame {
         
         // Add to cards panel
         cardsPanel.add(contentPanel, PROFILE_PANEL);
+    }
+    
+    /**
+     * Saves account settings including session timeout
+     */
+    private void saveAccountSettings() {
+        // Update session timeout
+        int newTimeout = (Integer) sessionTimeoutSpinner.getValue();
+        
+        UserManager userManager = UserManager.getInstance();
+        
+        if (userManager.updateSessionTimeout(newTimeout)) {
+            // Also update the current session timer with the new timeout
+            SessionManager.getInstance().stopSession();
+            SessionManager.getInstance().startSession(this);
+            
+            JOptionPane.showMessageDialog(
+                this,
+                "Settings saved successfully.",
+                "Settings Saved",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        } else {
+            JOptionPane.showMessageDialog(
+                this,
+                "Failed to save settings.",
+                "Error",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
     
     /**
@@ -475,16 +606,40 @@ public class AccountView extends JFrame {
         JLabel totalAssetsLabel = new JLabel("Total Assets");
         totalAssetsLabel.setFont(SUBHEADER_FONT);
         
-        JLabel totalAssetsValue = new JLabel("¥12,458.92");
+        // Get current user's currency preference
+        String userCurrency = currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY;
+        
+        // Convert total assets to user's currency and format it
+        double totalAssetsInCNY = 12458.92; // Base amount in CNY
+        double totalAssetsInUserCurrency = currencyManager.convert(totalAssetsInCNY, CurrencyManager.CNY, userCurrency);
+        String formattedTotalAssets = currencyManager.format(totalAssetsInUserCurrency, userCurrency);
+        
+        // Format other amounts
+        double assetsInCNY = 15250.75;
+        double debtsInCNY = -2791.83;
+        double netWorthInCNY = 12458.92;
+        
+        // Convert to user currency
+        double assetsInUserCurrency = currencyManager.convert(assetsInCNY, CurrencyManager.CNY, userCurrency);
+        double debtsInUserCurrency = currencyManager.convert(debtsInCNY, CurrencyManager.CNY, userCurrency);
+        double netWorthInUserCurrency = currencyManager.convert(netWorthInCNY, CurrencyManager.CNY, userCurrency);
+        
+        // Format amounts
+        String formattedAssets = currencyManager.format(assetsInUserCurrency, userCurrency);
+        String formattedDebts = currencyManager.format(debtsInUserCurrency, userCurrency);
+        String formattedNetWorth = currencyManager.format(netWorthInUserCurrency, userCurrency);
+        
+        // Update labels
+        JLabel totalAssetsValue = new JLabel(formattedTotalAssets);
         totalAssetsValue.setFont(new Font("Arial", Font.BOLD, 24));
         totalAssetsValue.setForeground(POSITIVE_GREEN);
         
         JPanel detailsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
         detailsPanel.setBackground(LIGHT_GRAY);
         
-        addAssetDetail(detailsPanel, "Assets", "¥15,250.75", POSITIVE_GREEN);
-        addAssetDetail(detailsPanel, "Debts", "-¥2,791.83", NEGATIVE_RED);
-        addAssetDetail(detailsPanel, "Net Worth", "¥12,458.92", POSITIVE_GREEN);
+        addAssetDetail(detailsPanel, "Assets", formattedAssets, POSITIVE_GREEN);
+        addAssetDetail(detailsPanel, "Debts", formattedDebts, NEGATIVE_RED);
+        addAssetDetail(detailsPanel, "Net Worth", formattedNetWorth, POSITIVE_GREEN);
         
         assetSummaryPanel.add(totalAssetsLabel, BorderLayout.NORTH);
         assetSummaryPanel.add(totalAssetsValue, BorderLayout.WEST);
@@ -556,6 +711,7 @@ public class AccountView extends JFrame {
         addAccountButton.setMaximumSize(new Dimension(200, 40));
         addAccountButton.setBorder(new EmptyBorder(10, 15, 10, 15));
         addAccountButton.setMargin(new Insets(10, 15, 10, 15));
+        addAccountButton.setActionCommand("addAccount");
         
         // Add action listener for the add account button
         addAccountButton.addActionListener(new ActionListener() {
@@ -791,6 +947,25 @@ public class AccountView extends JFrame {
         accountCard.add(accountInfoPanel, BorderLayout.CENTER);
         accountCard.add(rightPanel, BorderLayout.EAST);
         
+        // Convert and format balance
+        try {
+            String userCurrency = currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY;
+            
+            // Parse the original balance from CNY string
+            String cnyValueStr = balance.replace("¥", "").replace(",", "").trim();
+            double cnyValue = Double.parseDouble(cnyValueStr);
+            
+            // Convert to user currency
+            double userCurrencyValue = currencyManager.convert(cnyValue, CurrencyManager.CNY, userCurrency);
+            
+            // Format balance
+            String formattedBalance = currencyManager.format(userCurrencyValue, userCurrency);
+            balanceLabel.setText(formattedBalance);
+        } catch (NumberFormatException e) {
+            // If parsing fails, use the original balance
+            balanceLabel.setText(balance);
+        }
+        
         // Add the account card to the panel with some spacing
         panel.add(accountCard);
         panel.add(Box.createVerticalStrut(10));
@@ -813,6 +988,415 @@ public class AccountView extends JFrame {
         
         panel.add(label);
         panel.add(textField);
+    }
+    
+    /**
+     * Creates the preferences content panel
+     */
+    private void createPreferencesContent() {
+        JPanel preferencesPanel = new JPanel();
+        preferencesPanel.setBackground(Color.WHITE);
+        preferencesPanel.setLayout(new BorderLayout());
+        preferencesPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        
+        // Get current user and preferences
+        User currentUser = UserManager.getInstance().getCurrentUser();
+        
+        // Create main content panel with vertical box layout
+        JPanel mainContent = new JPanel();
+        mainContent.setLayout(new BoxLayout(mainContent, BoxLayout.Y_AXIS));
+        mainContent.setBackground(Color.WHITE);
+        
+        // Preferences header
+        JLabel preferencesHeaderLabel = new JLabel("Preferences");
+        preferencesHeaderLabel.setFont(SUBHEADER_FONT);
+        preferencesHeaderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        preferencesHeaderLabel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        
+        // 1. Currency settings
+        JPanel currencyPanel = new JPanel();
+        currencyPanel.setLayout(new BoxLayout(currencyPanel, BoxLayout.Y_AXIS));
+        currencyPanel.setBackground(Color.WHITE);
+        currencyPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        currencyPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        
+        JLabel currencyLabel = new JLabel("Display Currency");
+        currencyLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        currencyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JPanel currencyOptionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        currencyOptionsPanel.setBackground(Color.WHITE);
+        currencyOptionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        String[] currencies = {CurrencyManager.CNY, CurrencyManager.USD, CurrencyManager.EUR};
+        JComboBox<String> currencyCombo = new JComboBox<>(currencies);
+        currencyCombo.setSelectedItem(currentUser != null ? currentUser.getCurrency() : CurrencyManager.CNY);
+        currencyCombo.setFont(CONTENT_FONT);
+        currencyCombo.setPreferredSize(new Dimension(200, 30));
+        
+        // Add action listener to immediately show currency changes in preview
+        currencyCombo.addActionListener(e -> {
+                String newCurrency = (String) currencyCombo.getSelectedItem();
+                // Preview panel to show example values in the selected currency
+                updateCurrencyPreview(newCurrency, currencyPanel);
+        });
+        
+        currencyOptionsPanel.add(currencyCombo);
+        
+        // Add a preview panel to show currency conversion example
+        JPanel currencyPreviewPanel = new JPanel();
+        currencyPreviewPanel.setLayout(new BoxLayout(currencyPreviewPanel, BoxLayout.Y_AXIS));
+        currencyPreviewPanel.setBackground(new Color(245, 245, 245));
+        currencyPreviewPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        currencyPreviewPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        currencyPreviewPanel.setMaximumSize(new Dimension(400, 100));
+        
+        // Initial preview content
+        updateCurrencyPreview((String) currencyCombo.getSelectedItem(), currencyPanel);
+        
+        currencyPanel.add(currencyLabel);
+        currencyPanel.add(Box.createVerticalStrut(10));
+        currencyPanel.add(currencyOptionsPanel);
+        currencyPanel.add(Box.createVerticalStrut(10));
+        currencyPanel.add(currencyPreviewPanel); // Add the preview panel
+        
+        // 2. Chinese New Year Personalization Section
+        JPanel cnyPanel = new JPanel();
+        cnyPanel.setLayout(new BoxLayout(cnyPanel, BoxLayout.Y_AXIS));
+        cnyPanel.setBackground(Color.WHITE);
+        cnyPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cnyPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        
+        JLabel cnyLabel = new JLabel("Chinese New Year Personalization");
+        cnyLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        cnyLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        // Theme switch
+        JCheckBox themeSwitch = new JCheckBox("Red & Yellow Theme (All Pages)");
+        themeSwitch.setFont(CONTENT_FONT);
+        themeSwitch.setBackground(Color.WHITE);
+        themeSwitch.setSelected(isCNYTheme);
+        
+        // Budget boost switch
+        JCheckBox budgetSwitch = new JCheckBox("Boost Budget to 10,000 (Budget Page)");
+        budgetSwitch.setFont(CONTENT_FONT);
+        budgetSwitch.setBackground(Color.WHITE);
+        budgetSwitch.setSelected(isCNYBudgetBoost);
+        
+        // Add listeners
+        themeSwitch.addActionListener(e -> {
+            isCNYTheme = themeSwitch.isSelected();
+            applyThemeToAllComponents(this);
+            JOptionPane.showMessageDialog(this, 
+                "Theme settings will be applied when you navigate between pages.", 
+                "Theme Updated", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
+        
+        budgetSwitch.addActionListener(e -> {
+            isCNYBudgetBoost = budgetSwitch.isSelected();
+            JOptionPane.showMessageDialog(this, 
+                "Budget boost setting will take effect when you visit the Budget page.", 
+                "Budget Updated", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
+        
+        cnyPanel.add(cnyLabel);
+        cnyPanel.add(Box.createVerticalStrut(10));
+        cnyPanel.add(themeSwitch);
+        cnyPanel.add(Box.createVerticalStrut(5));
+        cnyPanel.add(budgetSwitch);
+        
+        // Save button
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JButton savePreferencesButton = new JButton("Save Preferences");
+        savePreferencesButton.setBackground(PRIMARY_BLUE);
+        savePreferencesButton.setForeground(Color.WHITE);
+        savePreferencesButton.setFont(CONTENT_FONT);
+        savePreferencesButton.setFocusPainted(false);
+        savePreferencesButton.setOpaque(true);
+        savePreferencesButton.setBorderPainted(false);
+        
+        // Add action listener for the save button
+        savePreferencesButton.addActionListener(e -> {
+            if (currentUser != null) {
+                // Store the original currency for comparison
+                String originalCurrency = currentUser.getCurrency();
+                
+                // Save currency preference
+                String newCurrency = (String) currencyCombo.getSelectedItem();
+                currentUser.setCurrency(newCurrency);
+                
+                // Update the user in the UserManager
+                boolean saved = UserManager.getInstance().updateCurrentUser(currentUser);
+                
+                if (saved) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Preferences saved successfully!", 
+                        "Success", 
+                        JOptionPane.INFORMATION_MESSAGE);
+                        
+                    // If currency changed, update the display immediately
+                    if (!originalCurrency.equals(newCurrency)) {
+                        updateCurrencyDisplay(newCurrency);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, 
+                        "Failed to save preferences. Please try again.", 
+                        "Error", 
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "Cannot save preferences: No user is currently logged in.", 
+                    "Error", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        
+        buttonPanel.add(savePreferencesButton);
+        
+        // Add components to main content panel
+        mainContent.add(preferencesHeaderLabel);
+        mainContent.add(currencyPanel);
+        mainContent.add(cnyPanel);
+        mainContent.add(buttonPanel);
+        
+        // Create a scroll pane for the main content
+        JScrollPane scrollPane = new JScrollPane(mainContent);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        
+        preferencesPanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Add to cards panel
+        cardsPanel.add(preferencesPanel, PREFERENCES_PANEL);
+    }
+    
+    /**
+     * Updates the currency preview panel with sample values in the selected currency
+     * @param currency The selected currency
+     * @param container The container that holds the preview panel
+     */
+    private void updateCurrencyPreview(String currency, JPanel container) {
+        // Find and remove the existing preview panel if it exists
+        Component[] components = container.getComponents();
+        for (Component comp : components) {
+            if (comp instanceof JPanel && comp.getMaximumSize().height == 100) {
+                container.remove(comp);
+                break;
+            }
+        }
+        
+        // Create a new preview panel
+        JPanel previewPanel = new JPanel();
+        previewPanel.setLayout(new BoxLayout(previewPanel, BoxLayout.Y_AXIS));
+        previewPanel.setBackground(new Color(245, 245, 245));
+        previewPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        previewPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        previewPanel.setMaximumSize(new Dimension(400, 100));
+        
+        // Example amount in CNY
+        double sampleAmount = 1000.00; // 1000 CNY
+        
+        // Convert to selected currency
+        double convertedAmount = currencyManager.convert(sampleAmount, CurrencyManager.CNY, currency);
+        
+        // Format the amount
+        String formattedAmount = currencyManager.format(convertedAmount, currency);
+        
+        // Add preview information
+        JLabel previewLabel = new JLabel("Example: 1,000.00 CNY equals " + formattedAmount);
+        previewLabel.setFont(CONTENT_FONT);
+        previewLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel infoLabel = new JLabel("All amounts will be displayed in your selected currency");
+        infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        infoLabel.setForeground(DARK_GRAY);
+        infoLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        previewPanel.add(previewLabel);
+        previewPanel.add(Box.createVerticalStrut(5));
+        previewPanel.add(infoLabel);
+        
+        // Add the preview panel
+        container.add(previewPanel);
+        container.revalidate();
+        container.repaint();
+    }
+    
+    /**
+     * Updates currency display across the UI when currency preference changes
+     * @param newCurrency The new currency setting
+     */
+    private void updateCurrencyDisplay(String newCurrency) {
+        // This method will be called when the user changes currency in preferences
+        // Refresh the accounts manager view to show amounts in new currency
+        createAccountsManagerContent();
+    }
+    
+    /**
+     * Shows a dialog for changing the user's password
+     */
+    private void showChangePasswordDialog() {
+        // Create the dialog
+        JDialog changePasswordDialog = new JDialog(this, "Change Password", true);
+        changePasswordDialog.setSize(400, 300);
+        changePasswordDialog.setLocationRelativeTo(this);
+        changePasswordDialog.setLayout(new BorderLayout());
+        
+        // Create the input panel
+        JPanel inputPanel = new JPanel();
+        inputPanel.setLayout(new GridLayout(3, 2, 10, 20));
+        inputPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        
+        // Current password field
+        JLabel currentPasswordLabel = new JLabel("Current Password:");
+        currentPasswordLabel.setFont(CONTENT_FONT);
+        JPasswordField currentPasswordField = new JPasswordField();
+        
+        // New password field
+        JLabel newPasswordLabel = new JLabel("New Password:");
+        newPasswordLabel.setFont(CONTENT_FONT);
+        JPasswordField newPasswordField = new JPasswordField();
+        
+        // Confirm new password field
+        JLabel confirmPasswordLabel = new JLabel("Confirm New Password:");
+        confirmPasswordLabel.setFont(CONTENT_FONT);
+        JPasswordField confirmPasswordField = new JPasswordField();
+        
+        // Add fields to the input panel
+        inputPanel.add(currentPasswordLabel);
+        inputPanel.add(currentPasswordField);
+        inputPanel.add(newPasswordLabel);
+        inputPanel.add(newPasswordField);
+        inputPanel.add(confirmPasswordLabel);
+        inputPanel.add(confirmPasswordField);
+        
+        // Create the button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
+        
+        // Cancel button
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.setFont(CONTENT_FONT);
+        cancelButton.addActionListener(e -> changePasswordDialog.dispose());
+        
+        // Change password button
+        JButton changeButton = new JButton("Change Password");
+        changeButton.setFont(CONTENT_FONT);
+        changeButton.setBackground(PRIMARY_BLUE);
+        changeButton.setForeground(Color.WHITE);
+        changeButton.setOpaque(true);
+        changeButton.setBorderPainted(false);
+        changeButton.setFocusPainted(false);
+        
+        // Add action listener for the change password button
+        changeButton.addActionListener(e -> {
+            // Get the password values
+            String currentPassword = new String(currentPasswordField.getPassword());
+            String newPassword = new String(newPasswordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
+            
+            // Validate inputs
+            if (currentPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
+                JOptionPane.showMessageDialog(changePasswordDialog, 
+                    "All fields are required", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Check if new password and confirm password match
+            if (!newPassword.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(changePasswordDialog, 
+                    "New password and confirm password do not match", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Validate minimum password length
+            if (newPassword.length() < 6) {
+                JOptionPane.showMessageDialog(changePasswordDialog, 
+                    "New password must be at least 6 characters long", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Attempt to change the password
+            UserManager userManager = UserManager.getInstance();
+            boolean success = userManager.changePassword(currentPassword, newPassword);
+            
+            if (success) {
+                JOptionPane.showMessageDialog(changePasswordDialog, 
+                    "Password changed successfully!", 
+                    "Success", 
+                    JOptionPane.INFORMATION_MESSAGE);
+                changePasswordDialog.dispose();
+            } else {
+                JOptionPane.showMessageDialog(changePasswordDialog, 
+                    "Failed to change password. Please check your current password and try again.", 
+                    "Error", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        
+        // Add buttons to the button panel
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(changeButton);
+        
+        // Add panels to the dialog
+        changePasswordDialog.add(inputPanel, BorderLayout.CENTER);
+        changePasswordDialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        // Show the dialog
+        changePasswordDialog.setVisible(true);
+    }
+    
+    /**
+     * Applies CNY theme to all components in the frame
+     * @param frame The frame containing components to update
+     */
+    public static void applyThemeToAllComponents(JFrame frame) {
+        applyThemeToComponent(frame.getContentPane());
+        frame.repaint();
+    }
+    
+    /**
+     * Recursively applies CNY theme to components
+     * @param component The component to update
+     */
+    public static void applyThemeToComponent(Component component) {
+        if (component instanceof JPanel) {
+            JPanel panel = (JPanel) component;
+            panel.setBackground(isCNYTheme ? CNY_RED : Color.WHITE);
+            
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (component instanceof JButton) {
+            JButton button = (JButton) component;
+            if (isCNYTheme) {
+                button.setBackground(CNY_YELLOW);
+                button.setForeground(CNY_RED);
+            } else {
+                // Use constants for standard colors
+                button.setBackground(new Color(52, 152, 219)); // Similar to PRIMARY_BLUE
+                button.setForeground(Color.WHITE);
+            }
+        } else if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            label.setForeground(isCNYTheme ? CNY_YELLOW : Color.BLACK);
+        }
     }
     
     /**

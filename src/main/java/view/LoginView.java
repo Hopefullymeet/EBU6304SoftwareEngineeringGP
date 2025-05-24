@@ -1,5 +1,8 @@
 package view;
 
+import model.SessionManager;
+import model.UserManager;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -16,14 +19,14 @@ public class LoginView extends JFrame {
     private JPanel mainPanel;
     private JTextField usernameField;
     private JPasswordField passwordField;
-    
+
     // Colors and styling
     private final Color PRIMARY_BLUE = new Color(52, 152, 219);
     private final Color LIGHT_GRAY = new Color(245, 245, 245);
     private final Font HEADER_FONT = new Font("Arial", Font.BOLD, 22);
     private final Font LABEL_FONT = new Font("Arial", Font.PLAIN, 14);
     private final Font BUTTON_FONT = new Font("Arial", Font.BOLD, 14);
-    
+
     /**
      * Constructor for the LoginView
      */
@@ -32,11 +35,14 @@ public class LoginView extends JFrame {
         setSize(400, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
-        
+
         createLoginPanel();
         
         setLocationRelativeTo(null);
         setVisible(true);
+        
+        // 应用红黄主题
+        AccountView.applyThemeToAllComponents(this);
     }
     
     /**
@@ -135,21 +141,7 @@ public class LoginView extends JFrame {
         loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String username = usernameField.getText();
-                String password = new String(passwordField.getPassword());
-                
-                // For demonstration, any non-empty username/password is accepted
-                if (!username.trim().isEmpty() && !password.trim().isEmpty()) {
-                    dispose(); // Close the login window
-                    new HelpCenterView(); // Open the Help Center view
-                } else {
-                    JOptionPane.showMessageDialog(
-                        LoginView.this,
-                        "Please enter valid username and password",
-                        "Login Failed",
-                        JOptionPane.ERROR_MESSAGE
-                    );
-                }
+                login();
             }
         });
         
@@ -165,6 +157,51 @@ public class LoginView extends JFrame {
         mainPanel.add(registerPanel);
         
         add(mainPanel, BorderLayout.CENTER);
+    }
+    
+    /**
+     * Handles the login authentication
+     */
+    private void login() {
+        String username = usernameField.getText();
+        String password = new String(passwordField.getPassword());
+        
+        // Basic validation
+        if (username.trim().isEmpty() || password.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                LoginView.this,
+                "Please enter both username and password",
+                "Login Failed",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+        
+        // Authenticate user
+        UserManager userManager = UserManager.getInstance();
+        if (userManager.authenticateUser(username, password)) {
+            // Show welcome message
+            JOptionPane.showMessageDialog(
+                LoginView.this,
+                "Welcome, " + username + "!",
+                "Login Successful",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            
+            // Navigate to main view
+            dispose(); // Close the login window
+            AccountView accountView = new AccountView();
+            
+            // Start session monitoring
+            SessionManager.getInstance().startSession(accountView);
+        } else {
+            JOptionPane.showMessageDialog(
+                LoginView.this,
+                "Invalid username or password",
+                "Login Failed",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
     
     /**
