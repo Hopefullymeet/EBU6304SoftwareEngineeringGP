@@ -1366,7 +1366,7 @@ public class AccountView extends JFrame {
      * Applies CNY theme to all components in the frame
      * @param frame The frame containing components to update
      */
-    private void applyThemeToAllComponents(JFrame frame) {
+    public static void applyThemeToAllComponents(JFrame frame) {
         applyThemeToComponent(frame.getContentPane());
         frame.repaint();
     }
@@ -1375,7 +1375,7 @@ public class AccountView extends JFrame {
      * Recursively applies CNY theme to components
      * @param component The component to update
      */
-    private void applyThemeToComponent(Component component) {
+    public static void applyThemeToComponent(Component component) {
         if (component instanceof JPanel) {
             JPanel panel = (JPanel) component;
             panel.setBackground(isCNYTheme ? CNY_RED : Color.WHITE);
