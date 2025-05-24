@@ -20,6 +20,12 @@ public class User {
     private boolean financialTips = true;
     private boolean allowDataAnalytics = true;
     private boolean shareAnonymousData = true;
+    public boolean personal_info_sharing = true;
+    public boolean location_tracking = true;
+    public boolean email_notifications = true;
+    public boolean push_notifications = true;
+    public boolean third_party_ads = true;
+    public boolean data_retention = true;
 
     /**
      * Constructor for User
@@ -140,7 +146,54 @@ public class User {
     public void setShareAnonymousData(boolean shareAnonymousData) {
         this.shareAnonymousData = shareAnonymousData;
     }
-    
+    public boolean isPersonalInfoSharing() {
+        return personal_info_sharing;
+    }
+
+    public void setPersonalInfoSharing(boolean personalInfoSharing) {
+        this.personal_info_sharing = personalInfoSharing;
+    }
+
+    public boolean isLocationTracking() {
+        return location_tracking;
+    }
+
+    public void setLocationTracking(boolean locationTracking) {
+        this.location_tracking = locationTracking;
+    }
+
+    public boolean isEmailNotifications() {
+        return email_notifications;
+    }
+
+    public void setEmailNotifications(boolean emailNotifications) {
+        this.email_notifications = emailNotifications;
+    }
+
+    public boolean isPushNotifications() {
+        return push_notifications;
+    }
+
+    public void setPushNotifications(boolean pushNotifications) {
+        this.push_notifications = pushNotifications;
+    }
+
+    public boolean isThirdPartyAds() {
+        return third_party_ads;
+    }
+
+    public void setThirdPartyAds(boolean thirdPartyAds) {
+        this.third_party_ads = thirdPartyAds;
+    }
+
+    public boolean isDataRetention() {
+        return data_retention;
+    }
+
+    public void setDataRetention(boolean dataRetention) {
+        this.data_retention = dataRetention;
+    }
+
     /**
      * Converts the user object to a string format for storage in a text file
      * Format: username|encryptedPassword|email|sessionTimeoutMinutes|language|currency|theme|alerts...

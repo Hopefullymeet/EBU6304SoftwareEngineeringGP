@@ -106,7 +106,9 @@ public class BillingView extends JFrame {
         SessionManager.getInstance().startSession(this);
         
         // 应用红黄主题
-        AccountView.applyThemeToAllComponents(this);
+        if (AccountView.isCNYTheme) {
+            applyTheme();
+        }
         
         refreshTransactionsDisplay();
     }
@@ -116,6 +118,7 @@ public class BillingView extends JFrame {
      */
     private void createHeader() {
         JPanel headerPanel = new JPanel();
+        headerPanel.setName("headerPanel");
         headerPanel.setBackground(PRIMARY_BLUE);
         headerPanel.setPreferredSize(new Dimension(getWidth(), 50));
         headerPanel.setLayout(new BorderLayout());
@@ -1043,8 +1046,8 @@ public class BillingView extends JFrame {
                             if (errorMessage == null) {
                                 JOptionPane.showMessageDialog(
                                     BillingView.this, 
-                                    "交易数据导入成功！", 
-                                    "导入成功", 
+                                    "Transaction data imported successfully!", 
+                                    "Import Successful", 
                                     JOptionPane.INFORMATION_MESSAGE
                                 );
                                 refreshTransactionsDisplay();
@@ -1054,8 +1057,8 @@ public class BillingView extends JFrame {
                                 } else {
                                     JOptionPane.showMessageDialog(
                                         BillingView.this, 
-                                        "导入交易时出错: " + errorMessage, 
-                                        "导入错误", 
+                                        "Error importing transactions: " + errorMessage, 
+                                        "Import Error", 
                                         JOptionPane.ERROR_MESSAGE
                                     );
                                 }
@@ -1068,8 +1071,8 @@ public class BillingView extends JFrame {
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(
                         this, 
-                        "导入交易时出错: " + ex.getMessage(), 
-                        "导入错误", 
+                        "Error importing transactions: " + ex.getMessage(), 
+                        "Import Error", 
                         JOptionPane.ERROR_MESSAGE
                     );
                     ex.printStackTrace();
@@ -1077,8 +1080,8 @@ public class BillingView extends JFrame {
             } else {
                 JOptionPane.showMessageDialog(
                     this,
-                    "请先选择CSV文件",
-                    "文件未选择",
+                    "Please select a CSV file first",
+                    "No File Selected",
                     JOptionPane.WARNING_MESSAGE
                 );
             }
@@ -1326,6 +1329,61 @@ public class BillingView extends JFrame {
             transactionsPanel.revalidate();
             transactionsPanel.repaint();
         }
+    }
+    
+    /**
+     * Recursively applies theme to components
+     * @param component The component to update
+     */
+    private void applyThemeToComponent(Component component) {
+        if (component instanceof JPanel) {
+            JPanel panel = (JPanel) component;
+            
+            // 特殊处理顶部面板
+            if (panel.getName() != null && panel.getName().equals("headerPanel")) {
+                panel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : PRIMARY_BLUE);
+            } else {
+                panel.setBackground(AccountView.isCNYTheme ? AccountView.CNY_RED : Color.WHITE);
+            }
+            
+            for (Component child : panel.getComponents()) {
+                applyThemeToComponent(child);
+            }
+        } else if (component instanceof JButton) {
+            JButton button = (JButton) component;
+            if (AccountView.isCNYTheme) {
+                button.setBackground(AccountView.CNY_YELLOW);
+                button.setForeground(AccountView.CNY_RED);
+            } else {
+                // 根据按钮文本区分不同按钮
+                if (button.getText().equals("Logout")) {
+                    button.setBackground(new Color(231, 76, 60)); // 红色
+                    button.setForeground(Color.WHITE);
+                } else {
+                    button.setBackground(PRIMARY_BLUE);
+                    button.setForeground(Color.WHITE);
+                }
+            }
+        } else if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            
+            // 根据字体大小或样式来区分不同标签
+            if (label.getFont().getSize() >= 20) { // 大标题或头部标签
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : Color.WHITE);
+            } else if (label.getFont().getStyle() == Font.BOLD) { // 粗体标签
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : DARK_GRAY);
+            } else {
+                label.setForeground(AccountView.isCNYTheme ? AccountView.CNY_YELLOW : Color.BLACK);
+            }
+        }
+    }
+    
+    /**
+     * 应用当前主题到整个界面
+     */
+    private void applyTheme() {
+        applyThemeToComponent(this.getContentPane());
+        repaint();
     }
     
     /**
