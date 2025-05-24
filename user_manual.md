@@ -42,8 +42,6 @@ The application includes the following key features:
 - Bill management and reminders
 - AI-powered financial advice
 
-![Application home page showing main dashboard]
-
 ## Getting Started
 
 ### System Requirements
