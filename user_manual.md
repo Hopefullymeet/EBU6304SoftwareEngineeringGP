@@ -59,7 +59,7 @@ To use the Financial Management Application, your system should meet the followi
 There are two methods to install and run the application:
 
 **Method 1: Build with Maven, then run the JAR**
-1. Navigate to the root directory of the project `..\groupProject`
+1. Navigate to the root directory of the project `../groupProject`
 2. Build the project using Maven:
    ```
    mvn clean package
@@ -77,7 +77,7 @@ There are two methods to install and run the application:
 
 **Method 2: Run the JAR file directly**
 
-1. Navigate to the directory containing the JAR file  `..\groupProject\target`
+1. Navigate to the directory containing the JAR file  `../groupProject/target`
 2. Run the application using one of these options:
    - Execute the command: `java -jar groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar`
    - Or simply double-click on the `groupProject-1.0-SNAPSHOT-jar-with-dependencies.jar` file
