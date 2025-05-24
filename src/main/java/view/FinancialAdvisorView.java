@@ -79,6 +79,9 @@ public class FinancialAdvisorView extends JFrame {
         
         // Start session monitoring
         SessionManager.getInstance().startSession(this);
+        
+        // 应用红黄主题
+        AccountView.applyThemeToAllComponents(this);
     }
     
     /**
