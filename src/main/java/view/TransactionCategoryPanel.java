@@ -1,6 +1,6 @@
 package view;
 
-import model.TransactionCategorizer;
+import model.DeepSeekAPI;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -35,8 +35,16 @@ public class TransactionCategoryPanel extends JPanel {
     private JButton connectButton;
     private boolean isConnected = false;
     
-    // Transaction categorizer
-    private TransactionCategorizer categorizer;
+    // DeepSeek API for categorization
+    private DeepSeekAPI deepSeekAPI;
+    
+    // Categories for transactions
+    public static final String[] CATEGORIES = {
+        "Housing", "Transportation", "Food", "Utilities", 
+        "Insurance", "Healthcare", "Savings", "Personal", 
+        "Entertainment", "Education", "Clothing", "Gifts", 
+        "Travel", "Income", "Investment", "Other"
+    };
     
     // Colors and styling
     private final Color PRIMARY_BLUE = new Color(52, 152, 219);
@@ -145,7 +153,7 @@ public class TransactionCategoryPanel extends JPanel {
         gbc.weightx = 0.0;
         inputPanel.add(categoryLabel, gbc);
         
-        categoryComboBox = new JComboBox<>(TransactionCategorizer.CATEGORIES);
+        categoryComboBox = new JComboBox<>(CATEGORIES);
         categoryComboBox.setFont(CONTENT_FONT);
         categoryComboBox.setEnabled(false);
         gbc.gridx = 3;
@@ -209,7 +217,7 @@ public class TransactionCategoryPanel extends JPanel {
         transactionsTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 14));
         
         // Configure the Final Category column as a combo box
-        JComboBox<String> categoriesCombo = new JComboBox<>(TransactionCategorizer.CATEGORIES);
+        JComboBox<String> categoriesCombo = new JComboBox<>(CATEGORIES);
         DefaultCellEditor cellEditor = new DefaultCellEditor(categoriesCombo);
         transactionsTable.getColumnModel().getColumn(3).setCellEditor(cellEditor);
         
@@ -248,7 +256,7 @@ public class TransactionCategoryPanel extends JPanel {
     }
     
     /**
-     * Creates the API key panel
+     * Creates the API key panel for connecting to the DeepSeek API
      */
     private void createApiKeyPanel() {
         JPanel apiPanel = new JPanel();
@@ -276,65 +284,53 @@ public class TransactionCategoryPanel extends JPanel {
         connectButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (!isConnected) {
-                    String apiKey = apiKeyField.getText().trim();
-                    if (apiKey.isEmpty()) {
-                        JOptionPane.showMessageDialog(TransactionCategoryPanel.this, 
-                            "Please enter your DeepSeek API Key", 
-                            "API Key Required", 
-                            JOptionPane.WARNING_MESSAGE);
-                        return;
-                    }
+                String apiKey = apiKeyField.getText().trim();
+                if (apiKey.isEmpty()) {
+                    JOptionPane.showMessageDialog(
+                        TransactionCategoryPanel.this,
+                        "Please enter a valid API key",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE
+                    );
+                    return;
+                }
+
+                // 使用DeepSeekAPI替代TransactionCategorizer
+                try {
+                    deepSeekAPI = new DeepSeekAPI(apiKey);
                     
-                    try {
-                        // Initialize the categorizer
-                        categorizer = new TransactionCategorizer(apiKey);
-                        isConnected = true;
-                        
-                        // Update UI
-                        statusLabel.setText("Status: Connected to AI service");
-                        statusLabel.setForeground(new Color(46, 204, 113)); // Green
-                        connectButton.setText("Disconnect");
-                        apiKeyField.setEnabled(false);
-                        
-                        // Enable transaction input
-                        descriptionField.setEnabled(true);
-                        amountField.setEnabled(true);
-                        overrideCheckBox.setEnabled(true);
-                        categorizeButton.setEnabled(true);
-                        
-                        // Enable categorize all button if there are transactions
-                        if (tableModel.getRowCount() > 0) {
-                            categorizeAllButton.setEnabled(true);
-                        }
-                        
-                    } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(TransactionCategoryPanel.this, 
-                            "Failed to connect: " + ex.getMessage(), 
-                            "Connection Error", 
-                            JOptionPane.ERROR_MESSAGE);
-                    }
-                } else {
-                    // Disconnect
-                    isConnected = false;
-                    categorizer = null;
+                    // 设置专门用于交易分类的系统提示
+                    String systemPrompt = "You are a financial transaction categorizer. " +
+                        "Your task is to analyze transaction descriptions and assign them to the most appropriate category. " +
+                        "Respond with the category name only. " +
+                        "Available categories: Housing, Transportation, Food, Utilities, Insurance, Healthcare, " +
+                        "Savings, Personal, Entertainment, Education, Clothing, Gifts, Travel, Income, Investment, Other.";
                     
-                    // Update UI
-                    statusLabel.setText("Status: Not connected to AI service");
-                    statusLabel.setForeground(Color.RED);
-                    connectButton.setText("Connect");
-                    apiKeyField.setEnabled(true);
+                    deepSeekAPI.clearConversation();
+                    deepSeekAPI.addSystemMessage(systemPrompt);
                     
-                    // Disable transaction input
-                    descriptionField.setEnabled(false);
-                    amountField.setEnabled(false);
-                    categoryComboBox.setEnabled(false);
-                    overrideCheckBox.setEnabled(false);
-                    overrideCheckBox.setSelected(false);
-                    categorizeButton.setEnabled(false);
+                    // 连接成功
+                    isConnected = true;
+                    statusLabel.setText("Status: Connected to AI service");
+                    statusLabel.setForeground(new Color(46, 204, 113));
                     
-                    // Disable categorize all button
-                    categorizeAllButton.setEnabled(false);
+                    // 启用分类按钮和输入框
+                    descriptionField.setEnabled(true);
+                    amountField.setEnabled(true);
+                    overrideCheckBox.setEnabled(true);
+                    categorizeButton.setEnabled(true);
+                    categorizeAllButton.setEnabled(true);
+                    
+                    // 改变连接按钮状态
+                    connectButton.setText("Disconnect");
+                    apiKeyField.setEnabled(false);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(
+                        TransactionCategoryPanel.this,
+                        "Error connecting to AI service: " + ex.getMessage(),
+                        "Connection Error",
+                        JOptionPane.ERROR_MESSAGE
+                    );
                 }
             }
         });
@@ -349,7 +345,7 @@ public class TransactionCategoryPanel extends JPanel {
     }
     
     /**
-     * Categorizes a single transaction and adds it to the table
+     * 使用DeepSeekAPI对单个交易进行分类
      */
     private void categorizeTransaction() {
         String description = descriptionField.getText().trim();
@@ -375,37 +371,45 @@ public class TransactionCategoryPanel extends JPanel {
         categorizeButton.setEnabled(false);
         statusLabel.setText("Status: Processing...");
         
-        // Use SwingWorker to avoid freezing the UI
-        SwingWorker<String, Void> worker = new SwingWorker<>() {
+        // 使用DeepSeekAPI进行分类
+        SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
             @Override
             protected String doInBackground() {
-                if (!isConnected) {
-                    JOptionPane.showMessageDialog(TransactionCategoryPanel.this, 
-                        "Please connect to the API first", 
-                        "Not Connected", 
-                        JOptionPane.WARNING_MESSAGE);
-                    return null;
+                // 构建用于分类的提示
+                String prompt = String.format(
+                    "Categorize this transaction into one of the predefined categories:\n" +
+                    "Description: %s\n" +
+                    "Amount: ¥%.2f\n" +
+                    "Respond with the category name only: ", 
+                    description, amount
+                );
+                
+                // 等待变量，用于阻塞直到获得结果
+                final String[] result = {null};
+                final boolean[] done = {false};
+                
+                // 发送到DeepSeekAPI
+                deepSeekAPI.sendMessage(prompt, response -> {
+                    // 清理响应以获取类别
+                    result[0] = cleanCategoryResponse(response);
+                    done[0] = true;
+                    synchronized(done) {
+                        done.notify();
+                    }
+                });
+                
+                // 等待结果
+                try {
+                    synchronized(done) {
+                        if (!done[0]) {
+                            done.wait(10000); // 最多等待10秒
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
                 
-                try {
-                    // Use AI categorization
-                    categorizer.categorizeTransaction(description, amount, category -> {
-                        // Add to table on EDT
-                        SwingUtilities.invokeLater(() -> {
-                            Object[] row = {description, String.format("¥%.2f", amount), category, category};
-                            tableModel.addRow(row);
-                            
-                            // Re-enable inputs
-                            setCategoryInputsEnabled(true);
-                            statusLabel.setText("Status: Connected to AI service");
-                            clearInputFields();
-                        });
-                    });
-                    
-                    return "Transaction categorized successfully";
-                } catch (Exception ex) {
-                    return "Failed to categorize transaction: " + ex.getMessage();
-                }
+                return result[0] != null ? result[0] : "Other";
             }
             
             @Override
@@ -435,7 +439,22 @@ public class TransactionCategoryPanel extends JPanel {
     }
     
     /**
-     * Categorizes all transactions in the table
+     * 清理AI响应以提取类别
+     */
+    private String cleanCategoryResponse(String response) {
+        // 首先尝试将响应与类别匹配
+        for (String category : CATEGORIES) {
+            if (response.contains(category)) {
+                return category;
+            }
+        }
+        
+        // 如果没有找到类别，返回"Other"
+        return "Other";
+    }
+    
+    /**
+     * 使用DeepSeekAPI对多个交易进行批量分类
      */
     private void categorizeAllTransactions() {
         if (!isConnected || tableModel.getRowCount() == 0) {
@@ -447,34 +466,61 @@ public class TransactionCategoryPanel extends JPanel {
         
         statusLabel.setText("Status: Processing all transactions...");
         
-        // Collect all transactions
-        List<Map<String, Object>> transactions = new ArrayList<>();
+        // 构建提示语句
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Categorize each of the following transactions into one of the predefined categories.\n");
+        prompt.append("For each transaction, respond with the category name.\n\n");
+        
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            Map<String, Object> transaction = new HashMap<>();
-            transaction.put("description", tableModel.getValueAt(i, 0));
-            
-            // Parse amount from string (remove ¥ and parse)
+            String description = (String) tableModel.getValueAt(i, 0);
             String amountStr = (String) tableModel.getValueAt(i, 1);
-            double amount = Double.parseDouble(amountStr.replace("¥", ""));
-            transaction.put("amount", amount);
             
-            transactions.add(transaction);
+            prompt.append(String.format("Transaction %d:\n", i + 1));
+            prompt.append(String.format("Description: %s\n", description));
+            prompt.append(String.format("Amount: %s\n\n", amountStr));
         }
         
-        // Send for categorization
-        categorizer.categorizeTransactions(transactions, categories -> {
-            // Update table on EDT
-            SwingUtilities.invokeLater(() -> {
-                for (int i = 0; i < categories.size() && i < tableModel.getRowCount(); i++) {
-                    String category = categories.get(i);
-                    tableModel.setValueAt(category, i, 2); // Update AI suggested category
-                    tableModel.setValueAt(category, i, 3); // Update final category
+        prompt.append("Respond with a list of categories, one per line, in order of transactions.");
+        
+        // 发送请求
+        deepSeekAPI.sendMessage(prompt.toString(), response -> {
+            // 处理响应 - 每行一个类别
+            String[] lines = response.split("\n");
+            List<String> categories = new ArrayList<>();
+            
+            for (String line : lines) {
+                String trimmed = line.trim();
+                // 检查是否为类别名称
+                for (String category : CATEGORIES) {
+                    if (trimmed.contains(category)) {
+                        categories.add(category);
+                        break;
+                    }
                 }
                 
-                // Re-enable categorize button
-                categorizeAllButton.setEnabled(true);
-                
-                statusLabel.setText("Status: Connected to AI service");
+                // 如果匹配行数达到表格行数，跳出循环
+                if (categories.size() >= tableModel.getRowCount()) {
+                    break;
+                }
+            }
+            
+            // 确保有足够的类别
+            while (categories.size() < tableModel.getRowCount()) {
+                categories.add("Other");
+            }
+            
+            // 更新表格
+            SwingUtilities.invokeLater(() -> {
+                for (int i = 0; i < Math.min(categories.size(), tableModel.getRowCount()); i++) {
+                    tableModel.setValueAt(categories.get(i), i, 2); // 设置AI建议类别
+                    tableModel.setValueAt(categories.get(i), i, 3); // 设置最终类别
+                }
+                JOptionPane.showMessageDialog(
+                    TransactionCategoryPanel.this,
+                    "All transactions have been categorized.",
+                    "Categorization Complete",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
             });
         });
     }
